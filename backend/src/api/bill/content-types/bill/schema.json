@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "bills",
+  "info": {
+    "singularName": "bill",
+    "pluralName": "bills",
+    "displayName": "Bill"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "tenancy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::tenancy.tenancy",
+      "inversedBy": "bills"
+    },
+    "period": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "dueDate": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "default": "Unpaid",
+      "enum": [
+        "Unpaid",
+        "Paid"
+      ]
+    },
+    "receipt": {
+      "type": "media",
+      "multiple": false
+    }
+  }
+}

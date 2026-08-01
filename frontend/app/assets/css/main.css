@@ -1,0 +1,37 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --color-maroon-50: #fdf4f3;
+  --color-maroon-100: #fbe8e6;
+  --color-maroon-200: #f7d2ce;
+  --color-maroon-300: #f0b1a9;
+  --color-maroon-400: #e4857b;
+  --color-maroon-500: #d55d52;
+  --color-maroon-600: #b84034;
+  --color-maroon-700: #98332a;
+  --color-maroon-800: #7b2b24;
+  --color-maroon-900: #62221d;
+  --color-maroon-950: #380f0c;
+
+  --color-gold-50: #fdf9eb;
+  --color-gold-100: #faf0c8;
+  --color-gold-200: #f5e19a;
+  --color-gold-300: #eeca61;
+  --color-gold-400: #e6b53a;
+  --color-gold-500: #d9a51b;
+  --color-gold-600: #b98414;
+  --color-gold-700: #93630f;
+  --color-gold-800: #764e10;
+  --color-gold-900: #654013;
+  --color-gold-950: #3a2208;
+}
+
+.imapsu-brand-bar {
+  background-image: linear-gradient(to right, #7b2b24, #b84034, #d9a51b);
+}
+
+.imapsu-brand-tile {
+  background-color: #7b2b24;
+  color: #e6b53a;
+}

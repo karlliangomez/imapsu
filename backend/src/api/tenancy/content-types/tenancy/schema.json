@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tenancies",
+  "info": {
+    "singularName": "tenancy",
+    "pluralName": "tenancies",
+    "displayName": "Tenancy"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "propertySpace": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property-space.property-space",
+      "inversedBy": "tenancies"
+    },
+    "startDate": {
+      "type": "date",
+      "required": true
+    },
+    "endDate": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "default": "Active",
+      "enum": [
+        "Active",
+        "Ended",
+        "Terminated"
+      ]
+    },
+    "bills": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bill.bill",
+      "mappedBy": "tenancy"
+    }
+  }
+}

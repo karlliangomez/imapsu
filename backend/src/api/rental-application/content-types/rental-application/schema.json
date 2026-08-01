@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "rental_applications",
+  "info": {
+    "singularName": "rental-application",
+    "pluralName": "rental-applications",
+    "displayName": "Rental Application"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "propertySpace": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property-space.property-space",
+      "inversedBy": "rentalApplications"
+    },
+    "status": {
+      "type": "enumeration",
+      "required": true,
+      "default": "Pending",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected",
+        "Cancelled"
+      ]
+    },
+    "message": {
+      "type": "text"
+    },
+    "desiredMoveIn": {
+      "type": "date"
+    },
+    "monthlyOffer": {
+      "type": "decimal"
+    },
+    "letterOfIntent": {
+      "type": "media",
+      "multiple": false
+    }
+  }
+}

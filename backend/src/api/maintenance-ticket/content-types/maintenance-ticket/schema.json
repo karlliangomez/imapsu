@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "maintenance_tickets",
+  "info": {
+    "singularName": "maintenance-ticket",
+    "pluralName": "maintenance-tickets",
+    "displayName": "Maintenance Ticket"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "reporter": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "propertySpace": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property-space.property-space",
+      "inversedBy": "maintenanceTickets"
+    },
+    "category": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "Plumbing",
+        "Electrical",
+        "Structural",
+        "Internet",
+        "Other"
+      ]
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "default": "Open",
+      "enum": [
+        "Open",
+        "In Progress",
+        "Resolved",
+        "Closed"
+      ]
+    }
+  }
+}

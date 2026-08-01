@@ -1,0 +1,73 @@
+{
+  "kind": "collectionType",
+  "collectionName": "property_spaces",
+  "info": {
+    "singularName": "property-space",
+    "pluralName": "property-spaces",
+    "displayName": "Property Space"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "propertyCode": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "building": {
+      "type": "string",
+      "required": true
+    },
+    "floor": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "area": {
+      "type": "decimal"
+    },
+    "space_status": {
+      "type": "enumeration",
+      "required": true,
+      "default": "Vacant",
+      "enum": [
+        "Vacant",
+        "Occupied"
+      ]
+    },
+    "monthlyRent": {
+      "type": "decimal"
+    },
+    "rentalApplications": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::rental-application.rental-application",
+      "mappedBy": "propertySpace"
+    },
+    "tenancies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::tenancy.tenancy",
+      "mappedBy": "propertySpace"
+    },
+    "feedbacks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::feedback.feedback",
+      "mappedBy": "propertySpace"
+    },
+    "maintenanceTickets": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::maintenance-ticket.maintenance-ticket",
+      "mappedBy": "propertySpace"
+    }
+  }
+}
