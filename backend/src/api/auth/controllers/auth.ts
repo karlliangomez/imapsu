@@ -3,6 +3,7 @@
  */
 
 import { errors } from '@strapi/utils';
+import { isStaff } from '../../../utils/access';
 
 const { ApplicationError, ValidationError } = errors;
 
@@ -14,6 +15,11 @@ const ROLE_MODEL_UID = 'plugin::users-permissions.role';
 // administrator after the contract signing process is completed.
 const ALLOWED_REGISTER_ROLES = ['student', 'aspiring-tenant'];
 const DEFAULT_REGISTER_ROLE = 'student';
+
+// Tenant-facing roles an administrator/OAS may assign when creating an
+// account on behalf of a new tenant.
+const STAFF_CREATE_ROLES = ['student', 'aspiring-tenant', 'current-tenant'];
+const DEFAULT_STAFF_CREATE_ROLE = 'current-tenant';
 
 async function sanitizeUser(user: unknown) {
   const schema = strapi.getModel(USER_MODEL_UID);
@@ -78,6 +84,60 @@ export default {
       jwt,
       user: await sanitizeUser(user),
     });
+  },
+
+  // Staff-only: create a tenant-facing account on behalf of a new tenant
+  // (used by the tenancy creation form). Returns the created user so the
+  // caller can link it to a tenancy immediately.
+  async createUserByStaff(ctx: any) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized();
+    }
+    if (!isStaff(authUser)) {
+      return ctx.forbidden();
+    }
+
+    const body: Record<string, unknown> = ctx.request.body ?? {};
+
+    validateRegisterBody(body);
+
+    const email = String(body.email).trim().toLowerCase();
+    const username = String(body.username).trim();
+    const roleType = STAFF_CREATE_ROLES.includes(String(body.role))
+      ? String(body.role)
+      : DEFAULT_STAFF_CREATE_ROLE;
+
+    const role = await strapi.db.query(ROLE_MODEL_UID).findOne({ where: { type: roleType } });
+    if (!role) {
+      throw new ApplicationError('Impossible to find the requested role');
+    }
+
+    const userService = strapi.plugin('users-permissions').service('user');
+    const conflicting = await userService.count({
+      $or: [{ email }, { username }, { email: username }, { username: email }],
+    });
+
+    if (conflicting > 0) {
+      throw new ApplicationError('Email or username is already taken');
+    }
+
+    const user = await userService.add({
+      username,
+      email,
+      password: String(body.password),
+      provider: 'local',
+      confirmed: true,
+      role: role.id,
+    });
+
+    ctx.body = {
+      id: user.id,
+      documentId: user.documentId,
+      username: user.username,
+      email: user.email,
+      role: { name: role.name, type: role.type },
+    };
   },
 
   async me(ctx: any) {

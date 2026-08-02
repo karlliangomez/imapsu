@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
   roles: ['aspiring-tenant']
@@ -9,8 +9,6 @@ type RentalApplication = {
   documentId?: string
   status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'
   message?: string
-  desiredMoveIn?: string
-  monthlyOffer?: number | string
   createdAt?: string
   letterOfIntent?: { id: number; url?: string; name?: string } | null
   propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string } | null
@@ -23,6 +21,7 @@ useHead({ title: 'Rental applications | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()
+const route = useRoute()
 const { baseURL, $api, getErrorMessage } = useStrapi()
 const headers = { Authorization: `Bearer ${auth.token.value}` }
 
@@ -39,6 +38,7 @@ const { data, status, error, refresh } = await useFetch<ListResponse<RentalAppli
 
 const { data: propertyData } = await useFetch<ListResponse<PropertySpace>>('/api/properties', {
   baseURL,
+  headers,
   query: {
     'fields[0]': 'name',
     'fields[1]': 'propertyCode',
@@ -52,17 +52,26 @@ const { data: propertyData } = await useFetch<ListResponse<PropertySpace>>('/api
 const applications = computed(() => data.value?.data ?? [])
 const vacantProperties = computed(() => propertyData.value?.data ?? [])
 const propertyOptions = computed(() => vacantProperties.value.map(property => ({
-  label: `${property.name} (${property.propertyCode})${property.monthlyRent ? ` · ₱${Number(property.monthlyRent).toLocaleString()}` : ''}`,
+  label: `${property.name} (${property.propertyCode})${property.monthlyRent ? ` Â· â‚±${Number(property.monthlyRent).toLocaleString()}` : ''}`,
   value: property.documentId
 })))
 
 const selectedProperty = ref<string>()
-const desiredMoveIn = ref('')
-const monthlyOffer = ref<string>()
 const message = ref('')
+const letterFile = ref<File>()
+const letterFormKey = ref(0)
 const submitting = ref(false)
 const errorMessage = ref('')
 const formOpen = ref(false)
+
+const preselectProperty = typeof route.query.property === 'string' ? route.query.property : null
+
+onMounted(() => {
+  if (preselectProperty && vacantProperties.value.some(property => property.documentId === preselectProperty)) {
+    selectedProperty.value = preselectProperty
+    formOpen.value = true
+  }
+})
 
 const submit = async () => {
   errorMessage.value = ''
@@ -70,26 +79,34 @@ const submit = async () => {
     errorMessage.value = 'Please choose a vacant property.'
     return
   }
-  if (!desiredMoveIn.value) {
-    errorMessage.value = 'Please pick your desired move-in date.'
+  if (!letterFile.value) {
+    errorMessage.value = 'Please attach your signed letter of intent.'
     return
   }
 
   submitting.value = true
   try {
+    const form = new FormData()
+    form.append('files', letterFile.value)
+    const uploaded = await $api<{ id: number }[]>('/api/upload', {
+      method: 'POST',
+      body: form
+    })
+    const fileId = uploaded?.[0]?.id
+    if (!fileId) throw new Error('Upload failed')
+
     await $api('/api/rental-applications', {
       method: 'POST',
       body: {
         propertySpace: selectedProperty.value,
-        desiredMoveIn: desiredMoveIn.value,
-        monthlyOffer: monthlyOffer.value ? Number(monthlyOffer.value) : undefined,
-        message: message.value || undefined
+        message: message.value || undefined,
+        letterOfIntent: fileId
       }
     })
     selectedProperty.value = undefined
-    desiredMoveIn.value = ''
-    monthlyOffer.value = undefined
     message.value = ''
+    letterFile.value = undefined
+    letterFormKey.value++
     formOpen.value = false
     await refresh()
   } catch (err) {
@@ -148,18 +165,14 @@ const formatDate = (value?: string) => {
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
-
-const formatCurrency = (amount?: number | string) => amount == null || amount === ''
-  ? '—'
-  : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(Number(amount))
 </script>
 
 <template>
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Aspiring tenant</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Rental applications</h1>
+        <p class="imapsu-page-eyebrow mb-2">Aspiring tenant</p>
+        <h1 class="imapsu-page-heading">Rental applications</h1>
         <p class="mt-2 max-w-xl text-muted">Apply to rent a vacant space and track the status of your applications.</p>
       </div>
       <div class="flex items-center gap-2">
@@ -192,8 +205,8 @@ const formatCurrency = (amount?: number | string) => amount == null || amount ==
             </div>
 
             <dl class="mt-4 grid grid-cols-2 gap-4 text-sm">
-              <div><dt class="text-xs text-muted">Desired move-in</dt><dd class="font-medium text-highlighted">{{ formatDate(item.desiredMoveIn) || '—' }}</dd></div>
-              <div><dt class="text-xs text-muted">Monthly offer</dt><dd class="font-medium text-highlighted">{{ formatCurrency(item.monthlyOffer) }}</dd></div>
+              <div><dt class="text-xs text-muted">Property</dt><dd class="font-medium text-highlighted">{{ item.propertySpace?.name ?? 'â€”' }}</dd></div>
+              <div><dt class="text-xs text-muted">Letter of intent</dt><dd class="font-medium text-highlighted">{{ item.letterOfIntent ? 'Attached' : 'Not uploaded' }}</dd></div>
             </dl>
 
             <p v-if="item.message" class="mt-4 text-sm leading-relaxed text-toned">{{ item.message }}</p>
@@ -213,7 +226,7 @@ const formatCurrency = (amount?: number | string) => amount == null || amount ==
         </div>
     </div>
 
-    <UModal v-model:open="formOpen" :title="'New application'" :description="'Apply to rent a vacant campus space.'">
+    <UModal v-model:open="formOpen" :title="'New application'" :description="'Apply to rent a vacant campus space. A signed letter of intent is required.'">
       <template #body>
         <form class="space-y-5" @submit.prevent="submit">
         <UFormField label="Vacant property" name="propertySpace" required>
@@ -221,16 +234,14 @@ const formatCurrency = (amount?: number | string) => amount == null || amount ==
           <p v-if="vacantProperties.length === 0" class="mt-1 text-xs text-muted">No vacant spaces are currently available.</p>
         </UFormField>
 
-        <UFormField label="Desired move-in date" name="desiredMoveIn" required>
-          <UInput v-model="desiredMoveIn" type="date" :disabled="submitting" />
-        </UFormField>
-
-        <UFormField label="Monthly offer (PHP)" name="monthlyOffer">
-          <UInput v-model="monthlyOffer" type="number" min="0" placeholder="e.g. 12000" :disabled="submitting" />
+        <UFormField label="Letter of intent" name="letterOfIntent" required>
+          <UInput :key="letterFormKey" type="file" accept=".pdf,.doc,.docx" :disabled="submitting" :ui="{ leading: 'none' }" @change="(event: Event) => { const input = event.target as HTMLInputElement; letterFile = input.files?.[0] }" />
+          <p class="mt-1 text-xs text-muted">Attach your signed letter of intent in PDF or Word format â€” it is the most important part of your application.</p>
+          <p v-if="letterFile" class="mt-1 flex items-center gap-1.5 text-xs font-medium text-primary"><UIcon name="i-lucide-file-text" class="size-3.5" />{{ letterFile.name }}</p>
         </UFormField>
 
         <UFormField label="Message" name="message">
-          <UTextarea v-model="message" placeholder="Tell us anything about your application…" :rows="4" :disabled="submitting" />
+          <UTextarea v-model="message" placeholder="Anything else you want to add? (Optional)" :rows="4" :disabled="submitting" />
         </UFormField>
 
         <UAlert v-if="errorMessage" color="error" icon="i-lucide-circle-alert" :description="errorMessage" />

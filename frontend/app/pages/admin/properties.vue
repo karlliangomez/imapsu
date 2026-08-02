@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
   roles: ['oas', 'admin']
@@ -15,6 +15,7 @@ type PropertySpace = {
   area?: number | string
   space_status: 'Vacant' | 'Occupied'
   monthlyRent?: number | string
+  tenancies?: { documentId?: string; status?: string; user?: { username?: string; email?: string } | null }[] | null
 }
 
 type ListResponse<T> = { data: T[] }
@@ -29,13 +30,23 @@ const headers = { Authorization: `Bearer ${auth.token.value}` }
 const { data, status, error, refresh } = await useFetch<ListResponse<PropertySpace>>('/api/property-spaces', {
   baseURL,
   headers,
-  query: { sort: 'building:asc', 'pagination[pageSize]': 200 }
+  query: {
+    sort: 'building:asc',
+    'pagination[pageSize]': 200,
+    'populate[tenancies][filters][status][$eq]': 'Active',
+    'populate[tenancies][populate][user]': true
+  }
 })
 
 const properties = computed(() => data.value?.data ?? [])
 
+const tenantOf = (property: PropertySpace) => {
+  const active = property.tenancies?.find(tenancy => tenancy.status === 'Active')
+  return active?.user?.username || active?.user?.email || null
+}
+
 const formatCurrency = (amount?: number | string) => amount == null || amount === ''
-  ? '—'
+  ? 'â€”'
   : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(Number(amount))
 
 const formOpen = ref(false)
@@ -124,8 +135,8 @@ const remove = async (property: PropertySpace) => {
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Management</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Property spaces</h1>
+        <p class="imapsu-page-eyebrow mb-2">Management</p>
+        <h1 class="imapsu-page-heading">Property spaces</h1>
         <p class="mt-2 max-w-xl text-muted">Create, edit and remove property spaces. Only Administrators and OAS can manage these.</p>
       </div>
       <div class="flex items-center gap-3">
@@ -157,15 +168,25 @@ const remove = async (property: PropertySpace) => {
         <dl class="space-y-3 text-sm">
           <div class="flex items-center justify-between">
             <dt class="text-xs text-muted">Location</dt>
-            <dd class="font-medium text-highlighted">{{ property.building }}<span v-if="property.floor"> · {{ property.floor }}</span></dd>
+            <dd class="font-medium text-highlighted">{{ property.building }}<span v-if="property.floor"> Â· {{ property.floor }}</span></dd>
           </div>
           <div class="flex items-center justify-between">
             <dt class="text-xs text-muted">Area</dt>
-            <dd class="font-medium text-highlighted">{{ property.area != null ? `${property.area} sqm` : '—' }}</dd>
+            <dd class="font-medium text-highlighted">{{ property.area != null ? `${property.area} sqm` : 'â€”' }}</dd>
           </div>
           <div class="flex items-center justify-between">
             <dt class="text-xs text-muted">Monthly rent</dt>
             <dd class="font-semibold text-primary">{{ formatCurrency(property.monthlyRent) }}</dd>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <dt class="text-xs text-muted">Tenant</dt>
+            <dd class="truncate font-medium text-highlighted">
+              <span v-if="tenantOf(property)" class="flex items-center gap-1.5">
+                <UIcon name="i-lucide-user" class="size-3.5 text-primary" />
+                {{ tenantOf(property) }}
+              </span>
+              <span v-else class="text-muted">Vacant</span>
+            </dd>
           </div>
         </dl>
 

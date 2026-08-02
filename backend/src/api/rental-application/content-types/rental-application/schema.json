@@ -36,12 +36,6 @@
     "message": {
       "type": "text"
     },
-    "desiredMoveIn": {
-      "type": "date"
-    },
-    "monthlyOffer": {
-      "type": "decimal"
-    },
     "letterOfIntent": {
       "type": "media",
       "multiple": false

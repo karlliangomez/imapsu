@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
   roles: ['current-tenant']
@@ -9,12 +9,17 @@ type MaintenanceTicket = {
   documentId?: string
   category: 'Plumbing' | 'Electrical' | 'Structural' | 'Internet' | 'Other'
   description: string
-  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed'
+  status: 'Pending' | 'In Progress' | 'Completed'
   createdAt?: string
   propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string } | null
 }
 
-type PropertySpace = { documentId: string; name: string; propertyCode: string; building: string }
+type Tenancy = {
+  id: number | string
+  documentId?: string
+  status: 'Active' | 'Ended' | 'Terminated'
+  propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string } | null
+}
 type ListResponse<T> = { data: T[] }
 
 const CATEGORIES = ['Plumbing', 'Electrical', 'Structural', 'Internet', 'Other']
@@ -35,24 +40,23 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Maintenance
   }
 })
 
-const { data: propertyData } = await useFetch<ListResponse<PropertySpace>>('/api/properties', {
+const tickets = computed(() => data.value?.data ?? [])
+
+const { data: tenancyData } = await useFetch<ListResponse<Tenancy>>('/api/tenancies', {
   baseURL,
+  headers,
   query: {
-    'fields[0]': 'name',
-    'fields[1]': 'propertyCode',
-    'fields[2]': 'building',
-    'pagination[pageSize]': 100
+    'populate[propertySpace]': true,
+    sort: 'createdAt:desc',
+    'pagination[pageSize]': 10
   }
 })
 
-const tickets = computed(() => data.value?.data ?? [])
-const properties = computed(() => propertyData.value?.data ?? [])
-const propertyOptions = computed(() => properties.value.map(property => ({
-  label: `${property.name} (${property.propertyCode})`,
-  value: property.documentId
-})))
+const tenancies = computed(() => tenancyData.value?.data ?? [])
+const activeTenancy = computed(() => tenancies.value.find(tenancy => tenancy.status === 'Active') ?? tenancies.value[0])
+const rentedProperty = computed(() => activeTenancy.value?.propertySpace ?? null)
+const selectedProperty = computed(() => rentedProperty.value?.documentId)
 
-const selectedProperty = ref<string>()
 const category = ref<string>('Plumbing')
 const description = ref('')
 const submitting = ref(false)
@@ -61,7 +65,7 @@ const errorMessage = ref('')
 const submit = async () => {
   errorMessage.value = ''
   if (!selectedProperty.value) {
-    errorMessage.value = 'Please choose a property.'
+    errorMessage.value = 'No active tenancy found for your account. Please contact the office.'
     return
   }
   if (!description.value.trim()) {
@@ -79,7 +83,6 @@ const submit = async () => {
         description: description.value.trim()
       }
     })
-    selectedProperty.value = undefined
     category.value = 'Plumbing'
     description.value = ''
     await refresh()
@@ -92,14 +95,12 @@ const submit = async () => {
 
 const statusColor = (status: MaintenanceTicket['status']) => {
   switch (status) {
-    case 'Resolved':
+    case 'Completed':
       return 'success'
     case 'In Progress':
       return 'secondary'
-    case 'Open':
-      return 'primary'
     default:
-      return 'neutral'
+      return 'primary'
   }
 }
 
@@ -127,8 +128,8 @@ const formatDate = (value?: string) => value
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Current tenant</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Maintenance</h1>
+        <p class="imapsu-page-eyebrow mb-2">Current tenant</p>
+        <h1 class="imapsu-page-heading">Maintenance</h1>
         <p class="mt-2 max-w-xl text-muted">Report an issue with your space and track how the maintenance team is handling it.</p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
@@ -142,7 +143,12 @@ const formatDate = (value?: string) => value
 
         <form class="space-y-5" @submit.prevent="submit">
           <UFormField label="Property" name="propertySpace" required>
-            <USelect v-model="selectedProperty" :items="propertyOptions" placeholder="Select a property" :disabled="submitting" />
+            <div v-if="rentedProperty" class="flex items-center gap-2 rounded-md border border-default bg-elevated px-3 py-2.5">
+              <UIcon name="i-lucide-building-2" class="size-4 shrink-0 text-primary" />
+              <span class="truncate text-sm font-medium text-highlighted">{{ rentedProperty.name }}</span>
+              <span class="font-mono text-xs text-muted">({{ rentedProperty.propertyCode }})</span>
+            </div>
+            <p v-else class="text-sm text-muted">No active tenancy found for your account.</p>
           </UFormField>
 
           <UFormField label="Category" name="category" required>
@@ -150,7 +156,7 @@ const formatDate = (value?: string) => value
           </UFormField>
 
           <UFormField label="Description" name="description" required>
-            <UTextarea v-model="description" placeholder="Describe the issue and where in the space it is…" :rows="4" :disabled="submitting" />
+            <UTextarea v-model="description" placeholder="Describe the issue and where in the space it isâ€¦" :rows="4" :disabled="submitting" />
           </UFormField>
 
           <UAlert v-if="errorMessage" color="error" icon="i-lucide-circle-alert" :description="errorMessage" />

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
   roles: ['oas', 'admin']
@@ -47,7 +47,7 @@ const users = computed(() => data.value ?? [])
 
 const isSelf = (user: DirectoryUser) => user.id === auth.user.value?.id
 
-const roleLabel = (type?: string) => ROLE_OPTIONS.find(option => option.value === type)?.label ?? type ?? '—'
+const roleLabel = (type?: string) => ROLE_OPTIONS.find(option => option.value === type)?.label ?? type ?? 'â€”'
 
 const roleColor = (type?: string) => {
   switch (type) {
@@ -99,8 +99,8 @@ const remove = async (user: DirectoryUser) => {
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Management</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Users</h1>
+        <p class="imapsu-page-eyebrow mb-2">Management</p>
+        <h1 class="imapsu-page-heading">Users</h1>
         <p class="mt-2 max-w-xl text-muted">
           {{ auth.isAdmin.value ? 'Assign roles and remove accounts. Role changes are limited to Administrators.' : 'Read-only directory of registered users.' }}
         </p>

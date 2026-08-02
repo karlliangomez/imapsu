@@ -18,5 +18,15 @@ export default {
         },
       },
     },
+    {
+      method: 'GET',
+      path: '/properties/active-tenants',
+      handler: 'api::property-space.property-space.findActiveTenants',
+      config: {
+        auth: {
+          scope: ['api::property-space.property-space.find'],
+        },
+      },
+    },
   ],
 };

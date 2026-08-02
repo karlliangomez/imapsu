@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
   roles: ['oas', 'admin']
@@ -10,6 +10,7 @@ type Tenancy = {
   startDate: string
   endDate?: string
   status: 'Active' | 'Ended' | 'Terminated'
+  monthlyRent?: number | string
   createdAt?: string
   user?: { id: number; username?: string; email?: string } | null
   propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string } | null
@@ -36,7 +37,7 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Tenancy>>('
   }
 })
 
-const { data: userData } = await useFetch<DirectoryUser[]>('/api/user-directory', { baseURL, headers })
+const { data: userData, refresh: refreshUsers } = await useFetch<DirectoryUser[]>('/api/user-directory', { baseURL, headers })
 const { data: propertyData } = await useFetch<ListResponse<{ documentId: string; name: string; propertyCode: string; building: string }>>('/api/properties', {
   baseURL,
   headers,
@@ -44,7 +45,10 @@ const { data: propertyData } = await useFetch<ListResponse<{ documentId: string;
 })
 
 const tenancies = computed(() => data.value?.data ?? [])
-const userOptions = computed(() => (userData.value ?? []).map(user => ({ label: `${user.username} (${user.email})`, value: String(user.id) })))
+const TENANT_ROLE_TYPES = ['student', 'aspiring-tenant', 'current-tenant']
+const userOptions = computed(() => (userData.value ?? [])
+  .filter(user => TENANT_ROLE_TYPES.includes(user.role?.type ?? ''))
+  .map(user => ({ label: `${user.username} (${user.email})`, value: String(user.id) })))
 const propertyOptions = computed(() => (propertyData.value?.data ?? []).map(property => ({ label: `${property.name} (${property.propertyCode})`, value: property.documentId })))
 
 const statusColor = (status: Tenancy['status']) => {
@@ -62,44 +66,125 @@ const formatDate = (value?: string) => value
   ? new Date(value + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
   : ''
 
+const formatCurrency = (amount?: number | string) => amount == null || amount === ''
+  ? 'â€”'
+  : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(Number(amount))
+
 const formOpen = ref(false)
+const editing = ref<Tenancy | null>(null)
 const saving = ref(false)
 const formError = ref('')
 const form = reactive({
+  accountMode: 'existing' as 'existing' | 'new',
   user: '',
+  newUsername: '',
+  newEmail: '',
+  newPassword: '',
   propertySpace: '',
   startDate: '',
   endDate: '',
-  status: 'Active' as 'Active' | 'Ended' | 'Terminated'
+  status: 'Active' as 'Active' | 'Ended' | 'Terminated',
+  monthlyRent: ''
 })
 
 const openCreate = () => {
-  Object.assign(form, { user: '', propertySpace: '', startDate: '', endDate: '', status: 'Active' })
+  editing.value = null
+  Object.assign(form, {
+    accountMode: 'existing',
+    user: '',
+    newUsername: '',
+    newEmail: '',
+    newPassword: '',
+    propertySpace: '',
+    startDate: '',
+    endDate: '',
+    status: 'Active',
+    monthlyRent: ''
+  })
   formError.value = ''
   formOpen.value = true
 }
 
+const openEdit = (tenancy: Tenancy) => {
+  editing.value = tenancy
+  Object.assign(form, {
+    accountMode: 'existing',
+    user: tenancy.user?.id != null ? String(tenancy.user.id) : '',
+    newUsername: '',
+    newEmail: '',
+    newPassword: '',
+    propertySpace: tenancy.propertySpace?.documentId ?? '',
+    startDate: tenancy.startDate ?? '',
+    endDate: tenancy.endDate ?? '',
+    status: tenancy.status ?? 'Active',
+    monthlyRent: tenancy.monthlyRent != null ? String(tenancy.monthlyRent) : ''
+  })
+  formError.value = ''
+  formOpen.value = true
+}
+
+const createUser = async () => {
+  if (!form.newUsername.trim() || form.newUsername.trim().length < 3) {
+    throw new Error('Username must be at least 3 characters long')
+  }
+  if (!form.newEmail.trim() || !form.newEmail.includes('@')) {
+    throw new Error('Please provide a valid email address')
+  }
+  if (!form.newPassword || form.newPassword.length < 6) {
+    throw new Error('Password must be at least 6 characters long')
+  }
+  const created = await $api<{ id: number }>('/api/auth/create-user', {
+    method: 'POST',
+    body: {
+      username: form.newUsername.trim(),
+      email: form.newEmail.trim(),
+      password: form.newPassword,
+      role: 'current-tenant'
+    }
+  })
+  await refreshUsers()
+  return created.id
+}
+
 const save = async () => {
   formError.value = ''
-  if (!form.user || !form.propertySpace || !form.startDate) {
-    formError.value = 'Please choose a user, a property space and a start date.'
+  if (form.accountMode === 'new' && (!form.newUsername || !form.newEmail || !form.newPassword)) {
+    formError.value = 'Please fill in the new account details.'
+    return
+  }
+  if (form.accountMode === 'existing' && !form.user) {
+    formError.value = 'Please choose a user or create a new account.'
+    return
+  }
+  if (!form.propertySpace || !form.startDate) {
+    formError.value = 'Please choose a property space and a start date.'
     return
   }
   saving.value = true
   try {
-    await $api('/api/tenancies', {
-      method: 'POST',
-      body: {
-        data: {
-          user: Number(form.user),
-          propertySpace: form.propertySpace,
-          startDate: form.startDate,
-          endDate: form.endDate || undefined,
-          status: form.status
-        }
+    let userId: number
+    if (form.accountMode === 'new') {
+      userId = await createUser()
+    } else {
+      userId = Number(form.user)
+    }
+    const body = {
+      data: {
+        user: userId,
+        propertySpace: form.propertySpace,
+        startDate: form.startDate,
+        endDate: form.endDate || undefined,
+        status: form.status,
+        monthlyRent: form.monthlyRent === '' ? undefined : Number(form.monthlyRent)
       }
-    })
-    toast.add({ title: 'Tenancy created', color: 'success', icon: 'i-lucide-check-circle' })
+    }
+    if (editing.value) {
+      await $api(`/api/tenancies/${editing.value.documentId ?? editing.value.id}`, { method: 'PUT', body })
+      toast.add({ title: 'Tenancy updated', color: 'success', icon: 'i-lucide-check-circle' })
+    } else {
+      await $api('/api/tenancies', { method: 'POST', body })
+      toast.add({ title: 'Tenancy created', color: 'success', icon: 'i-lucide-check-circle' })
+    }
     formOpen.value = false
     await refresh()
   } catch (err) {
@@ -108,14 +193,26 @@ const save = async () => {
     saving.value = false
   }
 }
+
+const remove = async (tenancy: Tenancy) => {
+  const label = tenancy.propertySpace?.name ?? tenancy.user?.username ?? 'this tenancy'
+  if (!confirm(`Delete the tenancy for ${label}?`)) return
+  try {
+    await $api(`/api/tenancies/${tenancy.documentId ?? tenancy.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Tenancy deleted', color: 'success', icon: 'i-lucide-check-circle' })
+    await refresh()
+  } catch (err) {
+    toast.add({ title: 'Could not delete tenancy', description: getErrorMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
+  }
+}
 </script>
 
 <template>
   <main class="mx-auto max-w-5xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Management</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Tenancies</h1>
+        <p class="imapsu-page-eyebrow mb-2">Management</p>
+        <h1 class="imapsu-page-heading">Tenancies</h1>
         <p class="mt-2 max-w-xl text-muted">Review contracts and assign a tenancy to a user. Creating a tenancy also marks the space as occupied.</p>
       </div>
       <div class="flex items-center gap-3">
@@ -148,15 +245,50 @@ const save = async () => {
 
         <dl class="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div><dt class="text-xs text-muted">Start date</dt><dd class="font-medium text-highlighted">{{ formatDate(tenancy.startDate) }}</dd></div>
-          <div><dt class="text-xs text-muted">End date</dt><dd class="font-medium text-highlighted">{{ formatDate(tenancy.endDate) || '—' }}</dd></div>
+          <div><dt class="text-xs text-muted">End date</dt><dd class="font-medium text-highlighted">{{ formatDate(tenancy.endDate) || 'â€”' }}</dd></div>
+          <div><dt class="text-xs text-muted">Monthly rent</dt><dd class="font-medium text-highlighted">{{ formatCurrency(tenancy.monthlyRent) }}</dd></div>
         </dl>
+
+        <div class="mt-4 flex gap-2 border-t border-default pt-4">
+          <UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="subtle" size="sm" @click="openEdit(tenancy)" />
+          <UButton label="Delete" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" @click="remove(tenancy)" />
+        </div>
       </UCard>
     </div>
 
-    <UModal v-model:open="formOpen" title="Create tenancy" description="Assign a vacant space to a user.">
+    <UModal v-model:open="formOpen" :title="editing ? 'Edit tenancy' : 'Create tenancy'" description="Assign a vacant space to a user.">
       <template #body>
         <form class="space-y-4" @submit.prevent="save">
-          <UFormField label="User" required>
+          <template v-if="!editing">
+            <UFormField label="Tenant account">
+              <URadioGroup v-model="form.accountMode" variant="table" orientation="horizontal" :items="[
+                { label: 'Choose existing user', value: 'existing' },
+                { label: 'Create new account', value: 'new' }
+              ]" />
+            </UFormField>
+
+            <template v-if="form.accountMode === 'existing'">
+              <UFormField label="User" required>
+                <USelect v-model="form.user" :items="userOptions" placeholder="Select a user" searchable />
+              </UFormField>
+            </template>
+
+            <template v-else>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <UFormField label="Username" required>
+                  <UInput v-model="form.newUsername" placeholder="e.g. jdoe" autocomplete="off" />
+                </UFormField>
+                <UFormField label="Email" required>
+                  <UInput v-model="form.newEmail" type="email" placeholder="name@example.com" autocomplete="off" />
+                </UFormField>
+              </div>
+              <UFormField label="Temporary password" required description="The tenant can change this after signing in.">
+                <UInput v-model="form.newPassword" type="password" autocomplete="new-password" />
+              </UFormField>
+            </template>
+          </template>
+
+          <UFormField v-else label="User" description="Reassigning the tenancy to another user is allowed.">
             <USelect v-model="form.user" :items="userOptions" placeholder="Select a user" searchable />
           </UFormField>
 
@@ -173,15 +305,20 @@ const save = async () => {
             </UFormField>
           </div>
 
-          <UFormField label="Status">
-            <USelect v-model="form.status" :items="[{ label: 'Active', value: 'Active' }, { label: 'Ended', value: 'Ended' }, { label: 'Terminated', value: 'Terminated' }]" />
-          </UFormField>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <UFormField label="Monthly rent (PHP)" description="Agreed rent per month for this tenancy.">
+              <UInput v-model="form.monthlyRent" type="number" min="0" step="0.01" placeholder="e.g. 7000" />
+            </UFormField>
+            <UFormField label="Status">
+              <USelect v-model="form.status" :items="[{ label: 'Active', value: 'Active' }, { label: 'Ended', value: 'Ended' }, { label: 'Terminated', value: 'Terminated' }]" />
+            </UFormField>
+          </div>
 
           <UAlert v-if="formError" color="error" icon="i-lucide-circle-alert" :description="formError" />
 
           <div class="flex justify-end gap-2">
             <UButton label="Cancel" color="neutral" variant="ghost" :disabled="saving" @click="formOpen = false" />
-            <UButton type="submit" :loading="saving">Create tenancy</UButton>
+            <UButton type="submit" :loading="saving">{{ editing ? 'Save changes' : 'Create tenancy' }}</UButton>
           </div>
         </form>
       </template>

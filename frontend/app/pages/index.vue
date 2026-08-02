@@ -41,7 +41,7 @@ const features = [
         </p>
 
         <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <UButton :to="auth.isAuthenticated.value ? '/properties' : '/login?redirect=/properties'" size="lg" label="Browse properties" icon="i-lucide-arrow-right" />
+          <UButton :to="auth.isAuthenticated.value ? '/properties' : '/login'" size="lg" label="Navigate the map" icon="i-lucide-navigation" />
           <UButton v-if="!auth.isAuthenticated.value" to="/register" size="lg" color="gold" variant="subtle" label="Create an account" />
           <UButton v-else to="/account" size="lg" color="gold" variant="subtle" label="My account" />
         </div>

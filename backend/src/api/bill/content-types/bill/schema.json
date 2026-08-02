@@ -24,6 +24,34 @@
       "type": "decimal",
       "required": true
     },
+    "electricMeterPrevious": {
+      "type": "decimal"
+    },
+    "electricMeterCurrent": {
+      "type": "decimal"
+    },
+    "electricRate": {
+      "type": "decimal"
+    },
+    "electricCharge": {
+      "type": "decimal"
+    },
+    "waterMeterPrevious": {
+      "type": "decimal"
+    },
+    "waterMeterCurrent": {
+      "type": "decimal"
+    },
+    "waterRate": {
+      "type": "decimal"
+    },
+    "waterCharge": {
+      "type": "decimal"
+    },
+    "additionalCharges": {
+      "type": "decimal",
+      "default": 0
+    },
     "dueDate": {
       "type": "date"
     },
@@ -34,6 +62,12 @@
         "Unpaid",
         "Paid"
       ]
+    },
+    "paidAt": {
+      "type": "datetime"
+    },
+    "orNumber": {
+      "type": "string"
     },
     "receipt": {
       "type": "media",

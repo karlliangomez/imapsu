@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 type Announcement = {
   id: number | string
   documentId?: string
@@ -44,8 +44,8 @@ const audienceColor = (audience: Announcement['audience']) => {
   <main class="mx-auto max-w-4xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Stay informed</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Announcements</h1>
+        <p class="imapsu-page-eyebrow mb-2">Stay informed</p>
+        <h1 class="imapsu-page-heading">Announcements</h1>
         <p class="mt-2 max-w-xl text-muted">Latest updates from the iMapSU administration.</p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />

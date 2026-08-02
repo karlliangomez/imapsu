@@ -488,14 +488,21 @@ export interface ApiBillBill extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    additionalCharges: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     dueDate: Schema.Attribute.Date;
+    electricCharge: Schema.Attribute.Decimal;
+    electricMeterCurrent: Schema.Attribute.Decimal;
+    electricMeterPrevious: Schema.Attribute.Decimal;
+    electricRate: Schema.Attribute.Decimal;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::bill.bill'> &
       Schema.Attribute.Private;
+    orNumber: Schema.Attribute.String;
+    paidAt: Schema.Attribute.DateTime;
     period: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     receipt: Schema.Attribute.Media;
@@ -505,6 +512,10 @@ export interface ApiBillBill extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    waterCharge: Schema.Attribute.Decimal;
+    waterMeterCurrent: Schema.Attribute.Decimal;
+    waterMeterPrevious: Schema.Attribute.Decimal;
+    waterRate: Schema.Attribute.Decimal;
   };
 }
 
@@ -590,9 +601,9 @@ export interface ApiMaintenanceTicketMaintenanceTicket
       'plugin::users-permissions.user'
     >;
     status: Schema.Attribute.Enumeration<
-      ['Open', 'In Progress', 'Resolved', 'Closed']
+      ['Pending', 'In Progress', 'Completed']
     > &
-      Schema.Attribute.DefaultTo<'Open'>;
+      Schema.Attribute.DefaultTo<'Pending'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -664,7 +675,6 @@ export interface ApiRentalApplicationRentalApplication
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    desiredMoveIn: Schema.Attribute.Date;
     letterOfIntent: Schema.Attribute.Media;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -673,7 +683,6 @@ export interface ApiRentalApplicationRentalApplication
     > &
       Schema.Attribute.Private;
     message: Schema.Attribute.Text;
-    monthlyOffer: Schema.Attribute.Decimal;
     propertySpace: Schema.Attribute.Relation<
       'manyToOne',
       'api::property-space.property-space'
@@ -716,6 +725,7 @@ export interface ApiTenancyTenancy extends Struct.CollectionTypeSchema {
       'api::tenancy.tenancy'
     > &
       Schema.Attribute.Private;
+    monthlyRent: Schema.Attribute.Decimal;
     propertySpace: Schema.Attribute.Relation<
       'manyToOne',
       'api::property-space.property-space'

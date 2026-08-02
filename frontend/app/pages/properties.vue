@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: 'auth'
 })
@@ -48,8 +48,8 @@ const formatArea = (area?: number | string) => area == null || area === '' ? 'No
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Property portfolio</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Properties</h1>
+        <p class="imapsu-page-eyebrow mb-2">Property portfolio</p>
+        <h1 class="imapsu-page-heading">Properties</h1>
         <p class="mt-2 max-w-xl text-muted">Browse the property spaces currently recorded in the iMapSU system.</p>
       </div>
 
@@ -90,7 +90,7 @@ const formatArea = (area?: number | string) => area == null || area === '' ? 'No
         <dl class="space-y-4 text-sm">
           <div>
             <dt class="mb-1 flex items-center gap-1.5 text-xs text-muted"><UIcon name="i-lucide-map-pin" /> Location</dt>
-            <dd class="font-medium text-highlighted">{{ property.building }}<span v-if="property.floor"> · {{ property.floor }}</span></dd>
+            <dd class="font-medium text-highlighted">{{ property.building }}<span v-if="property.floor"> Â· {{ property.floor }}</span></dd>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div><dt class="mb-1 text-xs text-muted">Area</dt><dd class="font-medium text-highlighted">{{ formatArea(property.area) }}</dd></div>
@@ -98,6 +98,10 @@ const formatArea = (area?: number | string) => area == null || area === '' ? 'No
           </div>
           <div v-if="property.description"><dt class="mb-1 text-xs text-muted">Description</dt><dd class="line-clamp-2 text-toned">{{ property.description }}</dd></div>
         </dl>
+
+        <div v-if="auth.isAspiringTenant.value && property.space_status === 'Vacant' && property.documentId" class="mt-4">
+          <UButton block :to="`/rental-applications?property=${property.documentId}`" label="Apply" icon="i-lucide-file-text" />
+        </div>
       </UCard>
     </div>
   </main>

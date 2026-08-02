@@ -35,3 +35,74 @@
   background-color: #7b2b24;
   color: #e6b53a;
 }
+
+/* App background — a subtle maroon/gold wash over the theme background */
+.imapsu-page-bg {
+  background-color: var(--ui-bg-muted);
+  background-image:
+    radial-gradient(55rem 26rem at 88% -6%, color-mix(in srgb, var(--color-gold-400) 16%, transparent), transparent 62%),
+    radial-gradient(48rem 26rem at -8% 108%, color-mix(in srgb, var(--color-maroon-700) 14%, transparent), transparent 62%);
+}
+
+/* Branded page headings with a gold underline accent */
+.imapsu-page-heading {
+  font-size: clamp(1.875rem, 2.6vw + 1rem, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--ui-primary);
+}
+
+.imapsu-page-heading::after {
+  content: "";
+  display: block;
+  width: 2.75rem;
+  height: 0.3rem;
+  margin-top: 0.6rem;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--color-maroon-800), var(--color-gold-500));
+}
+
+/* Eyebrow labels above page titles */
+.imapsu-page-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--color-gold-500) 40%, transparent);
+  background: color-mix(in srgb, var(--color-gold-400) 18%, transparent);
+  padding: 0.2rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-primary);
+}
+
+/* Sidebar / drawer navigation links. The rail is always dark maroon, so the
+   link color is fixed light regardless of the active color mode. */
+.imapsu-nav-link {
+  color: var(--color-maroon-100);
+}
+
+.imapsu-nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.imapsu-nav-link.is-active,
+.imapsu-nav-link.is-active:hover {
+  background: var(--color-gold-400);
+  color: var(--color-maroon-950);
+}
+
+.imapsu-nav-icon {
+  color: var(--color-gold-300);
+}
+
+.imapsu-nav-link:hover .imapsu-nav-icon {
+  color: #fff;
+}
+
+.imapsu-nav-link.is-active .imapsu-nav-icon {
+  color: var(--color-maroon-950);
+}

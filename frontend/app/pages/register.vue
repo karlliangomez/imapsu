@@ -38,7 +38,7 @@ const handleRegister = async () => {
 
 <template>
   <div class="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center px-6 py-12">
-    <UCard>
+    <UCard class="border-t-4 border-t-gold-500 shadow-xl ring-1 ring-maroon-950/10">
       <template #header>
         <div class="flex flex-col items-center text-center">
           <span class="imapsu-brand-tile mb-4 grid size-12 place-items-center rounded-xl shadow-sm">
@@ -51,11 +51,11 @@ const handleRegister = async () => {
 
       <form class="space-y-5" @submit.prevent="handleRegister">
         <UFormField label="Username" name="username" required>
-          <UInput v-model="username" type="text" leading-icon="i-lucide-user" placeholder="jdoe" autocomplete="username" size="lg" :disabled="loading" autofocus />
+          <UInput v-model="username" type="text" leading-icon="i-lucide-user" placeholder="jdoe" autocomplete="username" size="lg" :disabled="loading" autofocus :ui="{ root: 'w-full' }" />
         </UFormField>
 
         <UFormField label="Email" name="email" required>
-          <UInput v-model="email" type="email" leading-icon="i-lucide-mail" placeholder="you@email.com" autocomplete="email" size="lg" :disabled="loading" />
+          <UInput v-model="email" type="email" leading-icon="i-lucide-mail" placeholder="you@email.com" autocomplete="email" size="lg" :disabled="loading" :ui="{ root: 'w-full' }" />
         </UFormField>
 
         <UFormField label="I want to use iMapSU as" name="role" required>
@@ -65,11 +65,11 @@ const handleRegister = async () => {
 
         <div class="grid gap-5 sm:grid-cols-2">
           <UFormField label="Password" name="password" required>
-            <UInput v-model="password" type="password" leading-icon="i-lucide-lock" placeholder="••••••••" autocomplete="new-password" size="lg" :disabled="loading" />
+            <UInput v-model="password" type="password" leading-icon="i-lucide-lock" placeholder="••••••••" autocomplete="new-password" size="lg" :disabled="loading" :ui="{ root: 'w-full' }" />
           </UFormField>
 
           <UFormField label="Confirm password" name="confirmPassword" required>
-            <UInput v-model="confirmPassword" type="password" leading-icon="i-lucide-lock" placeholder="••••••••" autocomplete="new-password" size="lg" :disabled="loading" />
+            <UInput v-model="confirmPassword" type="password" leading-icon="i-lucide-lock" placeholder="••••••••" autocomplete="new-password" size="lg" :disabled="loading" :ui="{ root: 'w-full' }" />
           </UFormField>
         </div>
 

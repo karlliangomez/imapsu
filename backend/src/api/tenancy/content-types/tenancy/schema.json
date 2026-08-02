@@ -38,6 +38,9 @@
         "Terminated"
       ]
     },
+    "monthlyRent": {
+      "type": "decimal"
+    },
     "bills": {
       "type": "relation",
       "relation": "oneToMany",

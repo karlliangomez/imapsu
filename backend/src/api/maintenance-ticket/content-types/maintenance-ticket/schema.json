@@ -39,12 +39,11 @@
     },
     "status": {
       "type": "enumeration",
-      "default": "Open",
+      "default": "Pending",
       "enum": [
-        "Open",
+        "Pending",
         "In Progress",
-        "Resolved",
-        "Closed"
+        "Completed"
       ]
     }
   }

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
   roles: ['oas', 'admin']
@@ -32,9 +32,24 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Announcemen
 const announcements = computed(() => data.value?.data ?? [])
 
 const formOpen = ref(false)
+const editing = ref<Announcement | null>(null)
 const saving = ref(false)
 const formError = ref('')
 const form = reactive({ title: '', body: '', audience: 'Everyone' })
+
+const openCreate = () => {
+  editing.value = null
+  Object.assign(form, { title: '', body: '', audience: 'Everyone' })
+  formError.value = ''
+  formOpen.value = true
+}
+
+const openEdit = (item: Announcement) => {
+  editing.value = item
+  Object.assign(form, { title: item.title, body: item.body, audience: item.audience ?? 'Everyone' })
+  formError.value = ''
+  formOpen.value = true
+}
 
 const save = async () => {
   formError.value = ''
@@ -49,15 +64,15 @@ const save = async () => {
 
   saving.value = true
   try {
-    await $api('/api/announcements', {
-      method: 'POST',
-      body: { data: { title: form.title.trim(), body: form.body.trim(), audience: form.audience } }
-    })
-    form.title = ''
-    form.body = ''
-    form.audience = 'Everyone'
+    const body = { data: { title: form.title.trim(), body: form.body.trim(), audience: form.audience } }
+    if (editing.value) {
+      await $api(`/api/announcements/${editing.value.documentId ?? editing.value.id}`, { method: 'PUT', body })
+      toast.add({ title: 'Announcement updated', color: 'success', icon: 'i-lucide-check-circle' })
+    } else {
+      await $api('/api/announcements', { method: 'POST', body })
+      toast.add({ title: 'Announcement created', description: 'It is now visible to its audience.', color: 'success', icon: 'i-lucide-check-circle' })
+    }
     formOpen.value = false
-    toast.add({ title: 'Announcement created', description: 'It is now visible to its audience.', color: 'success', icon: 'i-lucide-check-circle' })
     await refresh()
   } catch (err) {
     formError.value = getErrorMessage(err)
@@ -97,13 +112,13 @@ const audienceColor = (audience: Announcement['audience']) => {
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Management</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Announcements</h1>
+        <p class="imapsu-page-eyebrow mb-2">Management</p>
+        <h1 class="imapsu-page-heading">Announcements</h1>
         <p class="mt-2 max-w-xl text-muted">Publish announcements for students, tenants, or everyone.</p>
       </div>
       <div class="flex items-center gap-2">
         <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
-        <UButton label="New announcement" icon="i-lucide-plus" @click="formOpen = true" />
+        <UButton label="New announcement" icon="i-lucide-plus" @click="openCreate" />
       </div>
     </div>
 
@@ -124,6 +139,7 @@ const audienceColor = (audience: Announcement['audience']) => {
           </div>
           <div class="flex shrink-0 items-center gap-2">
             <UBadge :color="audienceColor(item.audience)" variant="subtle">{{ item.audience }}</UBadge>
+            <UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" @click="openEdit(item)" />
             <UButton label="Delete" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" @click="remove(item)" />
           </div>
         </div>
@@ -131,7 +147,7 @@ const audienceColor = (audience: Announcement['audience']) => {
       </UCard>
     </div>
 
-    <UModal v-model:open="formOpen" title="New announcement" description="Publish an announcement to your chosen audience.">
+    <UModal v-model:open="formOpen" :title="editing ? 'Edit announcement' : 'New announcement'" description="Publish an announcement to your chosen audience.">
       <template #body>
         <form class="space-y-4" @submit.prevent="save">
           <UFormField label="Title" required>
@@ -150,7 +166,7 @@ const audienceColor = (audience: Announcement['audience']) => {
 
           <div class="flex justify-end gap-2">
             <UButton label="Cancel" color="neutral" variant="ghost" :disabled="saving" @click="formOpen = false" />
-            <UButton type="submit" :loading="saving">Publish announcement</UButton>
+            <UButton type="submit" :loading="saving">{{ editing ? 'Save changes' : 'Publish announcement' }}</UButton>
           </div>
         </form>
       </template>

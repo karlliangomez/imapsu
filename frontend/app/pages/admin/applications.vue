@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
   roles: ['oas', 'admin']
@@ -9,8 +9,6 @@ type RentalApplication = {
   documentId?: string
   status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'
   message?: string
-  desiredMoveIn?: string
-  monthlyOffer?: number | string
   createdAt?: string
   letterOfIntent?: { id: number; url?: string; name?: string } | null
   user?: { id: number; username?: string; email?: string } | null
@@ -67,10 +65,6 @@ const formatDate = (value?: string) => {
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-const formatCurrency = (amount?: number | string) => amount == null || amount === ''
-  ? '—'
-  : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(Number(amount))
-
 const updating = ref<number | string | null>(null)
 
 const updateStatus = async (item: RentalApplication, statusValue: string) => {
@@ -95,8 +89,8 @@ const updateStatus = async (item: RentalApplication, statusValue: string) => {
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Management</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Rental applications</h1>
+        <p class="imapsu-page-eyebrow mb-2">Management</p>
+        <h1 class="imapsu-page-heading">Rental applications</h1>
         <p class="mt-2 max-w-xl text-muted">Review applications, inspect letters of intent and update their status.</p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
@@ -117,24 +111,18 @@ const updateStatus = async (item: RentalApplication, statusValue: string) => {
             <p class="font-medium text-highlighted">{{ item.propertySpace?.name ?? 'Property removed' }}</p>
             <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
               <span v-if="item.propertySpace" class="font-mono">{{ item.propertySpace.propertyCode }}</span>
-              <span v-if="item.user" class="flex items-center gap-1"><UIcon name="i-lucide-user" class="size-3.5" />{{ item.user.username }} · {{ item.user.email }}</span>
+              <span v-if="item.user" class="flex items-center gap-1"><UIcon name="i-lucide-user" class="size-3.5" />{{ item.user.username }} Â· {{ item.user.email }}</span>
               <span>Submitted {{ formatDate(item.createdAt) }}</span>
             </p>
           </div>
           <UBadge :color="statusColor(item.status)" variant="subtle">{{ item.status }}</UBadge>
         </div>
 
-        <dl class="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
-          <div><dt class="text-xs text-muted">Desired move-in</dt><dd class="font-medium text-highlighted">{{ formatDate(item.desiredMoveIn) || '—' }}</dd></div>
-          <div><dt class="text-xs text-muted">Monthly offer</dt><dd class="font-medium text-highlighted">{{ formatCurrency(item.monthlyOffer) }}</dd></div>
-          <div>
-            <dt class="text-xs text-muted">Letter of intent</dt>
-            <dd>
-              <a v-if="item.letterOfIntent" :href="`${baseURL}${item.letterOfIntent.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"><UIcon name="i-lucide-file-text" class="size-3.5" />View letter</a>
-              <span v-else class="text-muted">Not uploaded</span>
-            </dd>
-          </div>
-        </dl>
+        <div class="mt-4 border-t border-default pt-4">
+          <p class="mb-2 text-xs font-medium text-muted">Letter of intent</p>
+          <a v-if="item.letterOfIntent" :href="`${baseURL}${item.letterOfIntent.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"><UIcon name="i-lucide-file-text" class="size-3.5" />View letter of intent</a>
+          <span v-else class="text-sm text-muted">Not uploaded</span>
+        </div>
 
         <p v-if="item.message" class="mt-4 text-sm leading-relaxed text-toned">{{ item.message }}</p>
 

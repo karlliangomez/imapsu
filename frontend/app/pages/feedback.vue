@@ -1,7 +1,7 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
-  roles: ['student']
+  roles: ['student', 'current-tenant']
 })
 
 type Feedback = {
@@ -35,12 +35,18 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Feedback>>(
 
 const { data: propertyData } = await useFetch<ListResponse<PropertySpace>>('/api/properties', {
   baseURL,
+  headers,
   query: {
     'fields[0]': 'name',
     'fields[1]': 'propertyCode',
     'fields[2]': 'building',
     'pagination[pageSize]': 100
   }
+})
+
+const { data: tenantData } = await useFetch<ListResponse<{ propertyDocumentId: string; tenantName: string | null }>>('/api/properties/active-tenants', {
+  baseURL,
+  headers
 })
 
 const feedbacks = computed(() => data.value?.data ?? [])
@@ -56,6 +62,14 @@ const rating = ref(0)
 const comment = ref('')
 const submitting = ref(false)
 const errorMessage = ref('')
+
+const tenantMap = computed(() => new Map((tenantData.value?.data ?? []).map(entry => [entry.propertyDocumentId, entry.tenantName ?? ''])))
+
+const tenantOfProperty = (documentId?: string) => tenantMap.value.get(documentId ?? '') ?? ''
+
+watch(selectedProperty, value => {
+  tenantName.value = tenantOfProperty(value)
+})
 
 const submit = async () => {
   errorMessage.value = ''
@@ -100,15 +114,15 @@ const formatDate = (value?: string) => value
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Student feedback</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Feedback</h1>
-        <p class="mt-2 max-w-xl text-muted">Rate and review the tenant of a stall or space so the administration can keep service quality high.</p>
+        <p class="imapsu-page-eyebrow mb-2">Student feedback</p>
+        <h1 class="imapsu-page-heading">Feedback</h1>
+        <p class="mt-2 max-w-xl text-muted">{{ auth.isStudent.value ? 'Rate and review the tenant of a stall or space so the administration can keep service quality high.' : 'Read what students are saying about stall tenants.' }}</p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
     </div>
 
     <div class="grid items-start gap-6 lg:grid-cols-5">
-      <UCard class="lg:col-span-2">
+      <UCard v-if="auth.isStudent.value" class="lg:col-span-2">
         <template #header>
           <h2 class="text-lg font-semibold text-highlighted">Submit feedback</h2>
         </template>
@@ -119,7 +133,8 @@ const formatDate = (value?: string) => value
           </UFormField>
 
           <UFormField label="Tenant name" name="tenantName">
-            <UInput v-model="tenantName" type="text" placeholder="Who is the tenant?" :disabled="submitting" />
+            <UInput v-model="tenantName" type="text" placeholder="No active tenant" disabled />
+            <p class="mt-1 text-xs text-muted">The tenant is filled in automatically for the selected property.</p>
           </UFormField>
 
           <UFormField label="Rating" name="rating" required>
@@ -141,7 +156,7 @@ const formatDate = (value?: string) => value
           </UFormField>
 
           <UFormField label="Comment" name="comment">
-            <UTextarea v-model="comment" placeholder="Tell us about your experience…" :rows="4" :disabled="submitting" />
+            <UTextarea v-model="comment" placeholder="Tell us about your experienceâ€¦" :rows="4" :disabled="submitting" />
           </UFormField>
 
           <UAlert v-if="errorMessage" color="error" icon="i-lucide-circle-alert" :description="errorMessage" />
@@ -150,7 +165,7 @@ const formatDate = (value?: string) => value
         </form>
       </UCard>
 
-      <div class="lg:col-span-3">
+      <div class="lg:col-span-3" :class="auth.isStudent.value ? '' : 'lg:col-span-5'">
         <div v-if="status === 'pending'" class="space-y-4">
           <USkeleton v-for="index in 4" :key="index" class="h-28 rounded-lg" />
         </div>
@@ -180,7 +195,7 @@ const formatDate = (value?: string) => value
                 {{ item.propertySpace.name }}
                 <span class="font-mono">({{ item.propertySpace.propertyCode }})</span>
               </span>
-              <span v-if="item.tenantName">· Tenant: {{ item.tenantName }}</span>
+              <span v-if="item.tenantName">Â· Tenant: {{ item.tenantName }}</span>
             </p>
           </UCard>
         </div>

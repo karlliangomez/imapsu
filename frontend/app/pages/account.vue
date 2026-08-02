@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: 'auth'
 })
@@ -70,8 +70,8 @@ const upcomingFeatures = computed(() => {
   <div class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Your account</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">My account</h1>
+        <p class="imapsu-page-eyebrow mb-2">Your account</p>
+        <h1 class="imapsu-page-heading">My account</h1>
         <p class="mt-2 max-w-xl text-muted">Manage your iMapSU profile and access role-specific features.</p>
       </div>
     </div>

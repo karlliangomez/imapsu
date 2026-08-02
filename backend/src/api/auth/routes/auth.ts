@@ -13,6 +13,16 @@ export default {
       },
     },
     {
+      method: 'POST',
+      path: '/auth/create-user',
+      handler: 'api::auth.auth.createUserByStaff',
+      config: {
+        auth: {
+          scope: ['plugin::users-permissions.user.find'],
+        },
+      },
+    },
+    {
       method: 'GET',
       path: '/auth/me',
       handler: 'api::auth.auth.me',

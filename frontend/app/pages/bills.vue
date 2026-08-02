@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
   roles: ['current-tenant']
@@ -11,6 +11,8 @@ type Bill = {
   amount: number | string
   dueDate?: string
   status: 'Unpaid' | 'Paid'
+  paidAt?: string
+  orNumber?: string
   createdAt?: string
   receipt?: { id: number; url?: string; name?: string } | null
   tenancy?: {
@@ -46,13 +48,43 @@ const totalOutstanding = computed(() =>
     .reduce((sum, bill) => sum + Number(bill.amount || 0), 0)
 )
 
-const uploading = ref(false)
+const uploadingKeys = reactive<Record<string, boolean>>({})
+const submittingKeys = reactive<Record<string, boolean>>({})
+const removingKeys = reactive<Record<string, boolean>>({})
+const selectedFiles = reactive<Record<string, File>>({})
 const uploadError = ref('')
+const submitError = ref('')
 
-const uploadReceipt = async (bill: Bill, file?: File) => {
+const billKey = (bill: Bill) => String(bill.documentId ?? bill.id)
+const isUploading = (bill: Bill) => uploadingKeys[billKey(bill)] === true
+const isSubmitting = (bill: Bill) => submittingKeys[billKey(bill)] === true
+const isRemoving = (bill: Bill) => removingKeys[billKey(bill)] === true
+
+const orNumberDraft = reactive<Record<string, string>>({})
+const orValue = (bill: Bill) => (orNumberDraft[billKey(bill)] ?? '').trim()
+
+watch(bills, (list) => {
+  for (const bill of list) {
+    const key = billKey(bill)
+    if (bill.orNumber && orNumberDraft[key] == null) {
+      orNumberDraft[key] = bill.orNumber
+    }
+  }
+}, { immediate: true })
+
+const onReceiptSelected = (bill: Bill, event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
   if (!file) return
-  uploading.value = true
+  uploadReceipt(bill, file, input)
+}
+
+const uploadReceipt = async (bill: Bill, file: File, input?: HTMLInputElement) => {
+  const key = billKey(bill)
+  uploadingKeys[key] = true
   uploadError.value = ''
+  submitError.value = ''
+  selectedFiles[key] = file
   try {
     const form = new FormData()
     form.append('files', file)
@@ -63,25 +95,88 @@ const uploadReceipt = async (bill: Bill, file?: File) => {
     const fileId = uploaded?.[0]?.id
     if (!fileId) throw new Error('Upload failed')
 
-    await $api(`/api/bills/${bill.documentId ?? bill.id}`, {
+    const updated = await $api<{ data: Bill }>(`/api/bills/${key}`, {
       method: 'PUT',
       body: { data: { receipt: fileId } }
     })
-    toast.add({ title: 'Receipt uploaded', description: 'Payment receipt attached to this bill.', color: 'success', icon: 'i-lucide-check-circle' })
+    const detected = updated?.data?.orNumber
+    toast.add({
+      title: 'Receipt attached',
+      description: detected
+        ? `OR number detected: ${detected}. Review it, then submit.`
+        : 'No OR number detected. Enter it below, then submit.',
+      color: 'success',
+      icon: 'i-lucide-file-check'
+    })
     await refresh()
   } catch (err) {
     uploadError.value = getErrorMessage(err)
   } finally {
-    uploading.value = false
+    uploadingKeys[key] = false
+    delete selectedFiles[key]
+    if (input) input.value = ''
+  }
+}
+
+const submitPayment = async (bill: Bill) => {
+  const key = billKey(bill)
+  const value = orValue(bill)
+  if (!value) return
+  submittingKeys[key] = true
+  submitError.value = ''
+  try {
+    await $api(`/api/bills/${key}`, {
+      method: 'PUT',
+      body: { data: { orNumber: value } }
+    })
+    toast.add({
+      title: 'Payment submitted',
+      description: 'The bill is now marked as paid and sent to management for review.',
+      color: 'success',
+      icon: 'i-lucide-check-circle'
+    })
+    await refresh()
+  } catch (err) {
+    submitError.value = getErrorMessage(err)
+  } finally {
+    submittingKeys[key] = false
+  }
+}
+
+const removeReceipt = async (bill: Bill) => {
+  const key = billKey(bill)
+  removingKeys[key] = true
+  submitError.value = ''
+  try {
+    await $api(`/api/bills/${key}`, {
+      method: 'PUT',
+      body: { data: { receipt: null } }
+    })
+    delete orNumberDraft[key]
+    toast.add({
+      title: 'Receipt removed',
+      description: 'The uploaded receipt has been removed from this bill.',
+      color: 'neutral',
+      icon: 'i-lucide-trash-2'
+    })
+    await refresh()
+  } catch (err) {
+    submitError.value = getErrorMessage(err)
+  } finally {
+    removingKeys[key] = false
   }
 }
 
 const formatCurrency = (amount?: number | string) => amount == null || amount === ''
-  ? '—'
+  ? 'â€”'
   : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(Number(amount))
 
 const formatDate = (value?: string) => value
   ? new Date(value + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  : ''
+
+const formatDateTime = (value?: string) => value
+  ? new Date(value).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
   : ''
 
 const isOverdue = (bill: Bill) => {
@@ -97,16 +192,16 @@ const isOverdue = (bill: Bill) => {
   <main class="mx-auto max-w-5xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="mb-2 text-sm font-medium text-primary">Current tenant</p>
-        <h1 class="text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">Bills</h1>
-        <p class="mt-2 max-w-xl text-muted">View the bills attached to your tenancy and upload a payment receipt.</p>
+        <p class="imapsu-page-eyebrow mb-2">Current tenant</p>
+        <h1 class="imapsu-page-heading">Bills</h1>
+        <p class="mt-2 max-w-xl text-muted">Attach your payment receipt â€” the OR number is detected automatically â€” then review it and submit to mark the bill as paid.</p>
       </div>
 
       <div v-if="status === 'success'" class="flex gap-3">
-        <UCard class="min-w-32" :ui="{ body: 'p-3' }">
-          <p class="text-xs text-muted">Bills</p><p class="text-xl font-semibold text-highlighted">{{ bills.length }}</p>
+        <UCard class="min-w-32 border-t-4 border-t-maroon-700" :ui="{ body: 'p-3' }">
+          <p class="text-xs text-muted">Bills</p><p class="text-xl font-semibold text-primary">{{ bills.length }}</p>
         </UCard>
-        <UCard class="min-w-32" :ui="{ body: 'p-3' }">
+        <UCard class="min-w-32 border-t-4 border-t-gold-500" :ui="{ body: 'p-3' }">
           <p class="text-xs text-muted">Outstanding</p><p class="text-xl font-semibold text-error">{{ formatCurrency(totalOutstanding) }}</p>
         </UCard>
         <div class="flex items-center">
@@ -142,7 +237,15 @@ const isOverdue = (bill: Bill) => {
 
         <dl class="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
           <div><dt class="text-xs text-muted">Amount</dt><dd class="font-semibold text-highlighted">{{ formatCurrency(bill.amount) }}</dd></div>
-          <div><dt class="text-xs text-muted">Due date</dt><dd class="font-medium text-highlighted">{{ formatDate(bill.dueDate) || '—' }}</dd></div>
+          <div><dt class="text-xs text-muted">Due date</dt><dd class="font-medium text-highlighted">{{ formatDate(bill.dueDate) || 'â€”' }}</dd></div>
+          <div v-if="bill.status === 'Paid'">
+            <dt class="text-xs text-muted">Paid on</dt>
+            <dd class="font-medium text-highlighted">{{ formatDateTime(bill.paidAt) || 'â€”' }}</dd>
+          </div>
+          <div v-if="bill.receipt">
+            <dt class="text-xs text-muted">OR No.</dt>
+            <dd class="font-semibold font-mono text-highlighted">{{ bill.orNumber || 'â€”' }}</dd>
+          </div>
           <div v-if="bill.receipt">
             <dt class="text-xs text-muted">Receipt</dt>
             <dd><a :href="`${baseURL}${bill.receipt.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"><UIcon name="i-lucide-file-text" class="size-3.5" />View receipt</a></dd>
@@ -150,9 +253,49 @@ const isOverdue = (bill: Bill) => {
         </dl>
 
         <div v-if="bill.status === 'Unpaid'" class="mt-5 border-t border-default pt-4">
-          <p class="mb-2 text-xs text-muted">Upload payment receipt</p>
-          <UInput type="file" accept="image/*,.pdf" :disabled="uploading" :ui="{ leading: 'none' }" @change="(event: Event) => { const input = event.target as HTMLInputElement; if (input.files?.[0]) uploadReceipt(bill, input.files[0]).then(() => { input.value = '' }) }" />
-          <p v-if="uploadError" class="mt-2 text-xs text-error">{{ uploadError }}</p>
+          <p class="mb-3 text-xs text-muted">Payment</p>
+
+          <template v-if="!bill.receipt">
+            <div class="flex flex-wrap items-center gap-3">
+              <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-default px-3 py-2 text-sm font-medium text-primary hover:border-primary" :class="{ 'pointer-events-none opacity-60': isUploading(bill) }">
+                <UIcon :name="isUploading(bill) ? 'i-lucide-loader-2' : 'i-lucide-upload'" class="size-4" :class="{ 'animate-spin': isUploading(bill) }" />
+                {{ isUploading(bill) ? 'Uploadingâ€¦' : 'Choose receipt' }}
+                <input type="file" accept="image/*,.pdf" class="sr-only" :disabled="isUploading(bill)" @change="(event: Event) => onReceiptSelected(bill, event)" />
+              </label>
+              <span v-if="selectedFiles[billKey(bill)]" class="max-w-64 truncate text-sm text-muted">{{ selectedFiles[billKey(bill)].name }}</span>
+              <span v-else-if="isUploading(bill)" class="text-sm text-muted">Reading OR number from the receiptâ€¦</span>
+            </div>
+            <p v-if="uploadError" class="mt-2 text-xs text-error">{{ uploadError }}</p>
+          </template>
+
+          <template v-else>
+            <div class="flex flex-wrap items-center gap-3">
+              <a :href="`${baseURL}${bill.receipt.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                <UIcon name="i-lucide-file-text" class="size-4" /> {{ bill.receipt.name || 'Receipt attached' }}
+              </a>
+              <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-default px-2.5 py-1.5 text-xs font-medium text-muted hover:border-primary hover:text-primary" :class="{ 'pointer-events-none opacity-60': isUploading(bill) }">
+                <UIcon name="i-lucide-repeat" class="size-3.5" /> Replace
+                <input type="file" accept="image/*,.pdf" class="sr-only" :disabled="isUploading(bill)" @change="(event: Event) => onReceiptSelected(bill, event)" />
+              </label>
+              <UButton
+                icon="i-lucide-trash-2"
+                label="Remove file"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                :loading="isRemoving(bill)"
+                :disabled="isUploading(bill)"
+                @click="removeReceipt(bill)"
+              />
+            </div>
+            <div class="mt-3 flex flex-wrap items-end gap-3">
+              <UFormField label="OR Number" description="Auto-filled from the receipt. Check it matches and submit." class="min-w-56">
+                <UInput v-model="orNumberDraft[billKey(bill)]" placeholder="e.g. 8823109" :disabled="isSubmitting(bill)" @keyup.enter="submitPayment(bill)" />
+              </UFormField>
+              <UButton :loading="isSubmitting(bill)" :disabled="!orValue(bill)" icon="i-lucide-send" @click="submitPayment(bill)">Submit payment</UButton>
+            </div>
+            <p v-if="submitError" class="mt-2 text-xs text-error">{{ submitError }}</p>
+          </template>
         </div>
       </UCard>
     </div>
