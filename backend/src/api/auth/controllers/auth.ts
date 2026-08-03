@@ -141,6 +141,24 @@ async function sanitizeUser(user: unknown) {
   return strapi.contentAPI.sanitize.output(user, schema, { auth: null });
 }
 
+// A password must combine character classes so that weak credentials are
+// rejected at registration and password change. Existing accounts are
+// unaffected: this only guards new passwords.
+function assertStrongPassword(password: string, label = 'Password') {
+  if (password.length < 6) {
+    throw new ValidationError(`${label} must be at least 6 characters long`);
+  }
+  if (!/[A-Z]/.test(password)) {
+    throw new ValidationError(`${label} must contain at least one uppercase letter`);
+  }
+  if (!/[a-z]/.test(password)) {
+    throw new ValidationError(`${label} must contain at least one lowercase letter`);
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    throw new ValidationError(`${label} must contain at least one symbol (e.g. ! @ # $)`);
+  }
+}
+
 function validateRegisterBody(body: Record<string, unknown>) {
   const { username, email, password } = body;
 
@@ -152,9 +170,11 @@ function validateRegisterBody(body: Record<string, unknown>) {
     throw new ValidationError('Please provide a valid email address');
   }
 
-  if (typeof password !== 'string' || password.length < 6) {
-    throw new ValidationError('Password must be at least 6 characters long');
+  if (typeof password !== 'string' || !password) {
+    throw new ValidationError('Please provide a password');
   }
+
+  assertStrongPassword(password);
 }
 
 export default {
@@ -364,9 +384,7 @@ export default {
       if (!hasCurrent || !hasNew) {
         throw new ValidationError('Both your current password and a new password are required to change it');
       }
-      if (String(body.newPassword).length < 6) {
-        throw new ValidationError('New password must be at least 6 characters long');
-      }
+      assertStrongPassword(String(body.newPassword), 'New password');
       const valid = await userService.validatePassword(String(body.currentPassword), existing.password);
       if (!valid) {
         throw new ValidationError('Current password is incorrect');
@@ -490,9 +508,7 @@ export default {
 
     if (body.password !== undefined) {
       const password = String(body.password);
-      if (password.length < 6) {
-        throw new ValidationError('Password must be at least 6 characters long');
-      }
+      assertStrongPassword(password);
       patch.password = password;
       changes.push('password');
     }

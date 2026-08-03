@@ -6,13 +6,16 @@ const { $api, getErrorMessage } = useStrapi()
 const toast = useToast()
 
 const isDark = computed(() => colorMode.value === 'dark')
-const isLoginPage = computed(() => route.path === '/login')
+const isStandalonePage = computed(() => ['/login', '/register'].includes(route.path))
 const drawerOpen = ref(false)
 
 const accountOpen = useState('account-settings-open', () => false)
 const currentPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
+const showCurrentPassword = ref(false)
+const showNewPassword = ref(false)
+const showConfirmPassword = ref(false)
 const savingPassword = ref(false)
 const passwordError = ref('')
 
@@ -21,6 +24,9 @@ const openAccountSettings = () => {
   currentPassword.value = ''
   newPassword.value = ''
   confirmPassword.value = ''
+  showCurrentPassword.value = false
+  showNewPassword.value = false
+  showConfirmPassword.value = false
   passwordError.value = ''
   accountOpen.value = true
 }
@@ -33,6 +39,11 @@ const savePassword = async () => {
   }
   if (newPassword.value !== confirmPassword.value) {
     passwordError.value = 'New passwords do not match.'
+    return
+  }
+  const check = checkPasswordStrength(newPassword.value)
+  if (!check.ok) {
+    passwordError.value = `Password must contain ${check.missing.join(', ')}.`
     return
   }
   savingPassword.value = true
@@ -118,7 +129,7 @@ const userItems = computed(() => {
   <div class="imapsu-page-bg min-h-screen">
     <div class="flex items-stretch">
       <aside
-        v-if="!isLoginPage"
+        v-if="!isStandalonePage"
         class="sticky top-0 z-30 hidden h-screen shrink-0 flex-col overflow-hidden border-r border-maroon-950 bg-maroon-800 transition-[width] duration-200 ease-in-out lg:flex"
         :class="sidebarCollapsed ? 'w-16' : 'w-64'"
       >
@@ -166,11 +177,11 @@ const userItems = computed(() => {
       </aside>
 
       <div class="min-w-0 flex-1">
-        <header v-if="!isLoginPage" class="sticky top-0 z-40 border-b border-default bg-default/85 backdrop-blur">
+        <header v-if="!isStandalonePage" class="sticky top-0 z-40 border-b border-default bg-default/85 backdrop-blur">
           <div class="imapsu-brand-bar h-1" />
           <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
             <div class="flex items-center gap-2">
-              <UButton v-if="!isLoginPage" class="lg:hidden" color="neutral" variant="ghost" square icon="i-lucide-menu" :aria-label="'Open navigation'" @click="drawerOpen = true" />
+              <UButton v-if="!isStandalonePage" class="lg:hidden" color="neutral" variant="ghost" square icon="i-lucide-menu" :aria-label="'Open navigation'" @click="drawerOpen = true" />
               <NuxtLink to="/" class="flex items-center gap-2.5 font-semibold tracking-tight">
                 <span class="imapsu-brand-tile grid size-8 place-items-center rounded-lg shadow-sm">
                   <UIcon name="i-lucide-map" class="size-4" />
@@ -200,7 +211,7 @@ const userItems = computed(() => {
       </div>
     </div>
 
-    <UDrawer v-if="!isLoginPage" v-model:open="drawerOpen" direction="left" :ui="{ content: 'w-80 max-w-[85vw] bg-maroon-800! ring-maroon-950!', handle: '!bg-gold-400' }">
+    <UDrawer v-if="!isStandalonePage" v-model:open="drawerOpen" direction="left" :ui="{ content: 'w-80 max-w-[85vw] bg-maroon-800! ring-maroon-950!', handle: '!bg-gold-400' }">
       <template #header>
         <div class="flex items-center gap-2.5">
           <span class="grid size-9 place-items-center rounded-lg bg-gold-400 text-maroon-900 shadow-sm">
@@ -241,15 +252,33 @@ const userItems = computed(() => {
           </div>
 
           <UFormField label="Current password" name="currentPassword" required>
-            <UInput v-model="currentPassword" type="password" autocomplete="current-password" :disabled="savingPassword" />
+            <UInput v-model="currentPassword" :type="showCurrentPassword ? 'text' : 'password'" autocomplete="current-password" :disabled="savingPassword" :ui="{ root: 'w-full' }">
+              <template #trailing>
+                <button type="button" class="text-dimmed transition-colors hover:text-highlighted" :aria-label="showCurrentPassword ? 'Hide password' : 'Show password'" @click="showCurrentPassword = !showCurrentPassword">
+                  <UIcon :name="showCurrentPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="size-4" />
+                </button>
+              </template>
+            </UInput>
           </UFormField>
 
           <div class="grid gap-4 sm:grid-cols-2">
             <UFormField label="New password" name="newPassword" required>
-              <UInput v-model="newPassword" type="password" autocomplete="new-password" :disabled="savingPassword" />
+              <UInput v-model="newPassword" :type="showNewPassword ? 'text' : 'password'" autocomplete="new-password" :disabled="savingPassword" :ui="{ root: 'w-full' }">
+                <template #trailing>
+                  <button type="button" class="text-dimmed transition-colors hover:text-highlighted" :aria-label="showNewPassword ? 'Hide password' : 'Show password'" @click="showNewPassword = !showNewPassword">
+                    <UIcon :name="showNewPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="size-4" />
+                  </button>
+                </template>
+              </UInput>
             </UFormField>
             <UFormField label="Confirm new password" name="confirmPassword" required>
-              <UInput v-model="confirmPassword" type="password" autocomplete="new-password" :disabled="savingPassword" />
+              <UInput v-model="confirmPassword" :type="showConfirmPassword ? 'text' : 'password'" autocomplete="new-password" :disabled="savingPassword" :ui="{ root: 'w-full' }">
+                <template #trailing>
+                  <button type="button" class="text-dimmed transition-colors hover:text-highlighted" :aria-label="showConfirmPassword ? 'Hide password' : 'Show password'" @click="showConfirmPassword = !showConfirmPassword">
+                    <UIcon :name="showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="size-4" />
+                  </button>
+                </template>
+              </UInput>
             </UFormField>
           </div>
 

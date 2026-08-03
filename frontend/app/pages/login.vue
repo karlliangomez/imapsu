@@ -6,6 +6,7 @@ const toast = useToast()
 
 const identifier = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const loading = ref(false)
 
 const handleLogin = async () => {
@@ -46,7 +47,13 @@ const handleLogin = async () => {
           </UFormField>
 
           <UFormField label="Password" name="password" required>
-            <UInput v-model="password" type="password" leading-icon="i-lucide-lock" placeholder="••••••••" autocomplete="current-password" size="lg" :disabled="loading" :ui="{ root: 'w-full' }" />
+            <UInput v-model="password" :type="showPassword ? 'text' : 'password'" leading-icon="i-lucide-lock" placeholder="••••••••" autocomplete="current-password" size="lg" :disabled="loading" :ui="{ root: 'w-full' }">
+              <template #trailing>
+                <button type="button" class="text-dimmed transition-colors hover:text-highlighted" :aria-label="showPassword ? 'Hide password' : 'Show password'" @click="showPassword = !showPassword">
+                  <UIcon :name="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="size-4" />
+                </button>
+              </template>
+            </UInput>
           </UFormField>
 
           <UButton type="submit" block size="lg" icon="i-lucide-log-in" :loading="loading">
