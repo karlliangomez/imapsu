@@ -14,12 +14,23 @@ type Tenancy = {
   propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string; floor?: string; monthlyRent?: number | string } | null
 }
 
+type RenewalIntent = {
+  id: number | string
+  documentId?: string
+  status: 'Pending' | 'Approved' | 'Rejected'
+  message?: string
+  createdAt?: string
+  tenancy?: { documentId?: string } | null
+  letterOfRenewal?: { id: number; url?: string; name?: string } | null
+}
+
 type ListResponse<T> = { data: T[] }
 
 useHead({ title: 'My tenancy | iMapSU' })
 
 const auth = useAuth()
-const { baseURL } = useStrapi()
+const toast = useToast()
+const { baseURL, $api, getErrorMessage } = useStrapi()
 const headers = { Authorization: `Bearer ${auth.token.value}` }
 
 const { data, status, error, refresh } = await useFetch<ListResponse<Tenancy>>('/api/tenancies', {
@@ -32,8 +43,19 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Tenancy>>('
   }
 })
 
+const { data: renewalData, refresh: refreshRenewals } = await useFetch<ListResponse<RenewalIntent>>('/api/renewal-intents', {
+  baseURL,
+  headers,
+  query: {
+    'populate[tenancy]': true,
+    'populate[letterOfRenewal]': true,
+    sort: 'createdAt:desc',
+    'pagination[pageSize]': 50
+  }
+})
+
 const tenancies = computed(() => data.value?.data ?? [])
-const activeTenancy = computed(() => tenancies.value.find(tenancy => tenancy.status === 'Active') ?? tenancies.value[0])
+const renewals = computed(() => renewalData.value?.data ?? [])
 
 const statusColor = (status: Tenancy['status']) => {
   switch (status) {
@@ -46,6 +68,24 @@ const statusColor = (status: Tenancy['status']) => {
   }
 }
 
+const renewalColor = (status: RenewalIntent['status']) => {
+  switch (status) {
+    case 'Approved':
+      return 'success'
+    case 'Rejected':
+      return 'error'
+    default:
+      return 'secondary'
+  }
+}
+
+const pendingRenewalFor = (tenancy: Tenancy) =>
+  renewals.value.find(renewal => renewal.tenancy?.documentId === (tenancy.documentId ?? tenancy.id) && renewal.status === 'Pending')
+
+const refreshAll = async () => {
+  await Promise.all([refresh(), refreshRenewals()])
+}
+
 const formatDate = (value?: string) => value
   ? new Date(value + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
   : ''
@@ -53,6 +93,58 @@ const formatDate = (value?: string) => value
 const formatCurrency = (amount?: number | string) => amount == null || amount === ''
   ? '—'
   : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(Number(amount))
+
+const renewOpen = ref(false)
+const renewTenancy = ref<Tenancy | null>(null)
+const renewLetterFile = ref<File>()
+const renewMessage = ref('')
+const renewSubmitting = ref(false)
+const renewError = ref('')
+
+const openRenew = (tenancy: Tenancy) => {
+  renewTenancy.value = tenancy
+  renewLetterFile.value = undefined
+  renewMessage.value = ''
+  renewError.value = ''
+  renewOpen.value = true
+}
+
+const submitRenewal = async () => {
+  renewError.value = ''
+  if (!renewTenancy.value) return
+  if (!renewLetterFile.value) {
+    renewError.value = 'Please attach your letter of renewal intent.'
+    return
+  }
+
+  renewSubmitting.value = true
+  try {
+    const form = new FormData()
+    form.append('files', renewLetterFile.value)
+    const uploaded = await $api<{ id: number }[]>('/api/upload', {
+      method: 'POST',
+      body: form
+    })
+    const fileId = uploaded?.[0]?.id
+    if (!fileId) throw new Error('Upload failed')
+
+    await $api('/api/renewal-intents', {
+      method: 'POST',
+      body: {
+        tenancy: renewTenancy.value.documentId ?? renewTenancy.value.id,
+        letterOfRenewal: fileId,
+        message: renewMessage.value || undefined
+      }
+    })
+    toast.add({ title: 'Renewal intent submitted', description: 'Your request is now pending review by the administration.', color: 'success', icon: 'i-lucide-check-circle' })
+    renewOpen.value = false
+    await refreshRenewals()
+  } catch (err) {
+    renewError.value = getErrorMessage(err)
+  } finally {
+    renewSubmitting.value = false
+  }
+}
 </script>
 
 <template>
@@ -63,7 +155,7 @@ const formatCurrency = (amount?: number | string) => amount == null || amount ==
         <h1 class="imapsu-page-heading">My tenancy</h1>
         <p class="mt-2 max-w-xl text-muted">Details of the tenancy contract attached to your account.</p>
       </div>
-      <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
+      <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refreshAll" />
     </div>
 
     <div v-if="status === 'pending'" class="space-y-4">
@@ -92,7 +184,41 @@ const formatCurrency = (amount?: number | string) => amount == null || amount ==
           <div><dt class="text-xs text-muted">End date</dt><dd class="font-medium text-highlighted">{{ formatDate(tenancy.endDate) || '—' }}</dd></div>
           <div class="col-span-2"><dt class="text-xs text-muted">Monthly rent</dt><dd class="font-semibold text-primary">{{ formatCurrency(tenancy.propertySpace?.monthlyRent) }}</dd></div>
         </dl>
+
+        <div v-if="tenancy.status === 'Active'" class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
+          <template v-if="pendingRenewalFor(tenancy)">
+            <p class="flex items-center gap-2 text-sm text-toned"><UIcon name="i-lucide-hourglass" class="size-4 text-secondary" />Your contract renewal is pending review.</p>
+            <UBadge color="secondary" variant="subtle">Renewal pending</UBadge>
+          </template>
+          <template v-else>
+            <p class="text-sm text-muted">Planning to stay? File your renewal before the contract ends.</p>
+            <UButton label="Renew contract" icon="i-lucide-file-signature" size="sm" @click="openRenew(tenancy)" />
+          </template>
+        </div>
       </UCard>
     </div>
+
+    <UModal v-model:open="renewOpen" title="Renew contract" :description="renewTenancy ? `Submit a renewal intent for ${renewTenancy.propertySpace?.name ?? 'your tenancy'}.` : ''">
+      <template #body>
+        <form class="space-y-5" @submit.prevent="submitRenewal">
+          <UFormField label="Letter of renewal intent" name="letterOfRenewal" required>
+            <UInput type="file" accept=".pdf,.doc,.docx" :disabled="renewSubmitting" :ui="{ leading: 'none' }" @change="(event: Event) => { const input = event.target as HTMLInputElement; renewLetterFile = input.files?.[0] }" />
+            <p class="mt-1 text-xs text-muted">Attach a signed letter of renewal intent in PDF or Word format.</p>
+            <p v-if="renewLetterFile" class="mt-1 flex items-center gap-1.5 text-xs font-medium text-primary"><UIcon name="i-lucide-file-text" class="size-3.5" />{{ renewLetterFile.name }}</p>
+          </UFormField>
+
+          <UFormField label="Message" name="message">
+            <UTextarea v-model="renewMessage" placeholder="Anything you want the administration to know? (Optional)" :rows="4" :disabled="renewSubmitting" />
+          </UFormField>
+
+          <UAlert v-if="renewError" color="error" icon="i-lucide-circle-alert" :description="renewError" />
+
+          <div class="flex justify-end gap-2">
+            <UButton label="Cancel" color="neutral" variant="ghost" :disabled="renewSubmitting" @click="renewOpen = false" />
+            <UButton type="submit" :loading="renewSubmitting">Submit renewal intent</UButton>
+          </div>
+        </form>
+      </template>
+    </UModal>
   </main>
 </template>

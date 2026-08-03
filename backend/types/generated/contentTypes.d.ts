@@ -660,6 +660,44 @@ export interface ApiPropertySpacePropertySpace
   };
 }
 
+export interface ApiRenewalIntentRenewalIntent
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'renewal_intents';
+  info: {
+    displayName: 'Renewal Intent';
+    pluralName: 'renewal-intents';
+    singularName: 'renewal-intent';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    letterOfRenewal: Schema.Attribute.Media;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::renewal-intent.renewal-intent'
+    > &
+      Schema.Attribute.Private;
+    message: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['Pending', 'Approved', 'Rejected']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Pending'>;
+    tenancy: Schema.Attribute.Relation<'manyToOne', 'api::tenancy.tenancy'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiRentalApplicationRentalApplication
   extends Struct.CollectionTypeSchema {
   collectionName: 'rental_applications';
@@ -725,7 +763,13 @@ export interface ApiStatusHistoryStatusHistory
       Schema.Attribute.Private;
     entityId: Schema.Attribute.String & Schema.Attribute.Required;
     entityType: Schema.Attribute.Enumeration<
-      ['rental-application', 'maintenance-ticket', 'bill', 'tenancy']
+      [
+        'rental-application',
+        'renewal-intent',
+        'maintenance-ticket',
+        'bill',
+        'tenancy',
+      ]
     > &
       Schema.Attribute.Required;
     fromStatus: Schema.Attribute.String;
@@ -1300,6 +1344,7 @@ declare module '@strapi/strapi' {
       'api::feedback.feedback': ApiFeedbackFeedback;
       'api::maintenance-ticket.maintenance-ticket': ApiMaintenanceTicketMaintenanceTicket;
       'api::property-space.property-space': ApiPropertySpacePropertySpace;
+      'api::renewal-intent.renewal-intent': ApiRenewalIntentRenewalIntent;
       'api::rental-application.rental-application': ApiRentalApplicationRentalApplication;
       'api::status-history.status-history': ApiStatusHistoryStatusHistory;
       'api::tenancy.tenancy': ApiTenancyTenancy;

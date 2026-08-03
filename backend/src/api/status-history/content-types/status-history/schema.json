@@ -16,6 +16,7 @@
       "required": true,
       "enum": [
         "rental-application",
+        "renewal-intent",
         "maintenance-ticket",
         "bill",
         "tenancy"

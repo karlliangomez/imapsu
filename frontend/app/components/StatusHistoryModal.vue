@@ -7,7 +7,7 @@ type StatusHistoryEntry = {
   changedBy?: { id: number; username?: string } | null
 }
 
-type EntityType = 'rental-application' | 'maintenance-ticket' | 'bill' | 'tenancy'
+type EntityType = 'rental-application' | 'renewal-intent' | 'maintenance-ticket' | 'bill' | 'tenancy'
 
 const props = defineProps<{
   entityType: EntityType

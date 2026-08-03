@@ -13,9 +13,10 @@ type AnnouncementResponse = { data: Announcement[] }
 
 useHead({ title: 'Announcements | iMapSU' })
 
-const { baseURL } = useStrapi()
+const { baseURL, authHeaders } = useStrapi()
 const { data, status, error, refresh } = await useFetch<AnnouncementResponse>('/api/announcements', {
   baseURL,
+  headers: authHeaders,
   query: {
     sort: 'publishedAt:desc',
     'pagination[pageSize]': 50

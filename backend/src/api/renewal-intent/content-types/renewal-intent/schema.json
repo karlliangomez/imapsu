@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "renewal_intents",
+  "info": {
+    "singularName": "renewal-intent",
+    "pluralName": "renewal-intents",
+    "displayName": "Renewal Intent"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "tenancy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::tenancy.tenancy"
+    },
+    "letterOfRenewal": {
+      "type": "media",
+      "multiple": false
+    },
+    "message": {
+      "type": "text"
+    },
+    "status": {
+      "type": "enumeration",
+      "required": true,
+      "default": "Pending",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected"
+      ]
+    }
+  }
+}

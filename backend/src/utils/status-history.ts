@@ -12,7 +12,7 @@ const UID = 'api::status-history.status-history';
 export async function recordStatusChange(
   strapi: Core.Strapi,
   input: {
-    entityType: 'rental-application' | 'maintenance-ticket' | 'bill' | 'tenancy';
+    entityType: 'rental-application' | 'renewal-intent' | 'maintenance-ticket' | 'bill' | 'tenancy';
     entityId: string | number;
     fromStatus?: string | null;
     toStatus?: string | null;
