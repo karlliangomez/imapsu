@@ -6,61 +6,9 @@ definePageMeta({
 useHead({ title: 'My account | iMapSU' })
 
 const auth = useAuth()
-const user = auth.user.value
-const { $api, getErrorMessage } = useStrapi()
-const toast = useToast()
 
-const profileUsername = ref(user?.username ?? '')
-const profileEmail = ref(user?.email ?? '')
-const savingProfile = ref(false)
-
-const currentPassword = ref('')
-const newPassword = ref('')
-const confirmPassword = ref('')
-const savingPassword = ref(false)
-
-const saveProfile = async () => {
-  if (!profileUsername.value.trim() || !profileEmail.value.trim()) {
-    toast.add({ title: 'Username and email are required', color: 'error', icon: 'i-lucide-circle-alert' })
-    return
-  }
-  savingProfile.value = true
-  try {
-    const updated = await $api<{ username: string; email: string }>('/api/auth/account', {
-      method: 'PUT',
-      body: { username: profileUsername.value, email: profileEmail.value }
-    })
-    profileUsername.value = updated.username
-    profileEmail.value = updated.email
-    await auth.refreshMe()
-    toast.add({ title: 'Profile updated', color: 'success', icon: 'i-lucide-check-circle' })
-  } catch (err) {
-    toast.add({ title: 'Could not update profile', description: getErrorMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
-  } finally {
-    savingProfile.value = false
-  }
-}
-
-const savePassword = async () => {
-  if (newPassword.value !== confirmPassword.value) {
-    toast.add({ title: 'New passwords do not match', color: 'error', icon: 'i-lucide-circle-alert' })
-    return
-  }
-  savingPassword.value = true
-  try {
-    await $api('/api/auth/account', {
-      method: 'PUT',
-      body: { currentPassword: currentPassword.value, newPassword: newPassword.value }
-    })
-    currentPassword.value = ''
-    newPassword.value = ''
-    confirmPassword.value = ''
-    toast.add({ title: 'Password updated', color: 'success', icon: 'i-lucide-check-circle' })
-  } catch (err) {
-    toast.add({ title: 'Could not change password', description: getErrorMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
-  } finally {
-    savingPassword.value = false
-  }
+const openAccountSettings = () => {
+  useState('account-settings-open').value = true
 }
 
 const roleLabel = computed(() => {
@@ -184,33 +132,12 @@ const upcomingFeatures = computed(() => {
         <h2 class="text-lg font-semibold text-highlighted">Account settings</h2>
       </template>
 
-      <div class="grid items-start gap-8 lg:grid-cols-2">
-        <form class="space-y-5" @submit.prevent="saveProfile">
-          <h3 class="text-sm font-semibold text-toned">Profile details</h3>
-          <UFormField label="Username" name="username" required>
-            <UInput v-model="profileUsername" type="text" autocomplete="username" :disabled="savingProfile" />
-          </UFormField>
-          <UFormField label="Email" name="email" required>
-            <UInput v-model="profileEmail" type="email" autocomplete="email" :disabled="savingProfile" />
-          </UFormField>
-          <UButton type="submit" :loading="savingProfile">Save profile</UButton>
-        </form>
-
-        <form class="space-y-5" @submit.prevent="savePassword">
-          <h3 class="text-sm font-semibold text-toned">Change password</h3>
-          <UFormField label="Current password" name="currentPassword" required>
-            <UInput v-model="currentPassword" type="password" autocomplete="current-password" :disabled="savingPassword" />
-          </UFormField>
-          <div class="grid gap-5 sm:grid-cols-2">
-            <UFormField label="New password" name="newPassword" required>
-              <UInput v-model="newPassword" type="password" autocomplete="new-password" :disabled="savingPassword" />
-            </UFormField>
-            <UFormField label="Confirm new password" name="confirmPassword" required>
-              <UInput v-model="confirmPassword" type="password" autocomplete="new-password" :disabled="savingPassword" />
-            </UFormField>
-          </div>
-          <UButton type="submit" :loading="savingPassword">Update password</UButton>
-        </form>
+      <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p class="text-sm font-medium text-toned">Password</p>
+          <p class="mt-0.5 text-sm text-muted">Username and email are managed by an administrator.</p>
+        </div>
+        <UButton label="Change password" icon="i-lucide-key-round" @click="openAccountSettings" />
       </div>
     </UCard>
   </div>

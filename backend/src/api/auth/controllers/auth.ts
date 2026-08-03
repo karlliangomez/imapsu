@@ -3,7 +3,7 @@
  */
 
 import { errors } from '@strapi/utils';
-import { isStaff } from '../../../utils/access';
+import { isAdmin, isStaff } from '../../../utils/access';
 
 const { ApplicationError, ValidationError } = errors;
 
@@ -157,8 +157,9 @@ export default {
     });
   },
 
-  // Self-service: a signed-in user updates their own profile (username, email)
-  // and/or password. The JWT stays valid, so the frontend re-fetches `/auth/me`.
+  // Self-service: a signed-in user changes their own password. Username and
+  // email are administrator-managed and must be changed through the admin
+  // user directory (`/api/users/:id`) instead.
   async updateAccount(ctx: any) {
     const authUser = ctx.state.user;
     if (!authUser) {
@@ -172,34 +173,9 @@ export default {
     }
 
     const body: Record<string, unknown> = ctx.request.body ?? {};
-    const patch: Record<string, unknown> = {};
 
-    if (body.username !== undefined) {
-      const username = String(body.username).trim();
-      if (username.length < 3) {
-        throw new ValidationError('Username must be at least 3 characters long');
-      }
-      if (username !== existing.username) {
-        const clash = await userService.count({ username });
-        if (clash > 0) {
-          throw new ApplicationError('Username is already taken');
-        }
-      }
-      patch.username = username;
-    }
-
-    if (body.email !== undefined) {
-      const email = String(body.email).trim().toLowerCase();
-      if (!email.includes('@') || email.length < 5) {
-        throw new ValidationError('Please provide a valid email address');
-      }
-      if (email !== existing.email) {
-        const clash = await userService.count({ email });
-        if (clash > 0) {
-          throw new ApplicationError('Email is already taken');
-        }
-      }
-      patch.email = email;
+    if (body.username !== undefined || body.email !== undefined) {
+      throw new ValidationError('Only an administrator can change the username or email');
     }
 
     const hasCurrent = body.currentPassword !== undefined;
@@ -215,15 +191,13 @@ export default {
       if (!valid) {
         throw new ValidationError('Current password is incorrect');
       }
-      patch.password = String(body.newPassword);
+
+      const updated = await userService.edit(authUser.id, { password: String(body.newPassword) });
+      ctx.body = await sanitizeUser(updated);
+      return;
     }
 
-    if (Object.keys(patch).length === 0) {
-      throw new ValidationError('Nothing to update');
-    }
-
-    const updated = await userService.edit(authUser.id, patch);
-    ctx.body = await sanitizeUser(updated);
+    throw new ValidationError('Nothing to update');
   },
 
   // Staff-only directory: users together with their role type. The standard
@@ -250,5 +224,116 @@ export default {
       updatedAt: user.updatedAt,
       role: user.role ? { documentId: user.role.documentId, name: user.role.name, type: user.role.type } : null,
     }));
+  },
+
+  // Admin-only: update a user's username, email and/or role. The self-service
+  // `/auth/account` endpoint never touches these fields; they are managed here.
+  async updateUserByStaff(ctx: any) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(authUser)) {
+      return ctx.forbidden('Only administrators can update user accounts');
+    }
+
+    const targetId = Number(ctx.params.id);
+    if (!Number.isInteger(targetId)) {
+      throw new ValidationError('Invalid user id');
+    }
+
+    const userService = strapi.plugin('users-permissions').service('user');
+    const target = await userService.fetch(targetId);
+    if (!target) {
+      throw new ApplicationError('User not found');
+    }
+
+    const body: Record<string, unknown> = ctx.request.body ?? {};
+    const patch: Record<string, unknown> = {};
+
+    if (body.username !== undefined) {
+      const username = String(body.username).trim();
+      if (username.length < 3) {
+        throw new ValidationError('Username must be at least 3 characters long');
+      }
+      if (username !== target.username) {
+        const clash = await userService.count({ username });
+        if (clash > 0) {
+          throw new ApplicationError('Username is already taken');
+        }
+      }
+      patch.username = username;
+    }
+
+    if (body.email !== undefined) {
+      const email = String(body.email).trim().toLowerCase();
+      if (!email.includes('@') || email.length < 5) {
+        throw new ValidationError('Please provide a valid email address');
+      }
+      if (email !== target.email) {
+        const clash = await userService.count({ email });
+        if (clash > 0) {
+          throw new ApplicationError('Email is already taken');
+        }
+      }
+      patch.email = email;
+    }
+
+    if (body.role !== undefined) {
+      const roleType = String(body.role);
+      const role = await strapi.db.query(ROLE_MODEL_UID).findOne({ where: { type: roleType } });
+      if (!role) {
+        throw new ApplicationError('Invalid role');
+      }
+      patch.role = role.id;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      throw new ValidationError('Nothing to update');
+    }
+
+    await userService.edit(targetId, patch);
+
+    const updated = await strapi.db.query(USER_MODEL_UID).findOne({
+      where: { id: targetId },
+      populate: { role: true },
+    });
+    ctx.body = {
+      id: updated.id,
+      documentId: updated.documentId,
+      username: updated.username,
+      email: updated.email,
+      confirmed: updated.confirmed,
+      blocked: updated.blocked,
+      role: updated.role ? { documentId: updated.role.documentId, name: updated.role.name, type: updated.role.type } : null,
+    };
+  },
+
+  // Admin-only: permanently remove a user account.
+  async deleteUserByStaff(ctx: any) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(authUser)) {
+      return ctx.forbidden('Only administrators can delete user accounts');
+    }
+
+    const targetId = Number(ctx.params.id);
+    if (!Number.isInteger(targetId)) {
+      throw new ValidationError('Invalid user id');
+    }
+    if (targetId === authUser.id) {
+      throw new ValidationError('You cannot delete your own account');
+    }
+
+    const userService = strapi.plugin('users-permissions').service('user');
+    const target = await userService.fetch(targetId);
+    if (!target) {
+      throw new ApplicationError('User not found');
+    }
+
+    await userService.remove({ id: targetId });
+    ctx.body = { id: targetId, deleted: true };
   },
 };

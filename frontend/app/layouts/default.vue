@@ -2,10 +2,53 @@
 const auth = useAuth()
 const colorMode = useColorMode()
 const route = useRoute()
+const { $api, getErrorMessage } = useStrapi()
+const toast = useToast()
 
 const isDark = computed(() => colorMode.value === 'dark')
 const isLoginPage = computed(() => route.path === '/login')
 const drawerOpen = ref(false)
+
+const accountOpen = useState('account-settings-open', () => false)
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const savingPassword = ref(false)
+const passwordError = ref('')
+
+const openAccountSettings = () => {
+  drawerOpen.value = false
+  currentPassword.value = ''
+  newPassword.value = ''
+  confirmPassword.value = ''
+  passwordError.value = ''
+  accountOpen.value = true
+}
+
+const savePassword = async () => {
+  passwordError.value = ''
+  if (!currentPassword.value || !newPassword.value || !confirmPassword.value) {
+    passwordError.value = 'All fields are required.'
+    return
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    passwordError.value = 'New passwords do not match.'
+    return
+  }
+  savingPassword.value = true
+  try {
+    await $api('/api/auth/account', {
+      method: 'PUT',
+      body: { currentPassword: currentPassword.value, newPassword: newPassword.value }
+    })
+    toast.add({ title: 'Password updated', color: 'success', icon: 'i-lucide-check-circle' })
+    accountOpen.value = false
+  } catch (err) {
+    passwordError.value = getErrorMessage(err)
+  } finally {
+    savingPassword.value = false
+  }
+}
 
 const sidebarCollapsed = ref(false)
 onMounted(() => {
@@ -30,7 +73,12 @@ function toggleSidebar() {
 const userItems = computed(() => {
   const items: Record<string, unknown>[] = [
     {
-      label: 'Account',
+      label: 'Account settings',
+      icon: 'i-lucide-settings',
+      onSelect: openAccountSettings
+    },
+    {
+      label: 'My account',
       icon: 'i-lucide-user',
       onSelect: () => navigateTo('/account')
     }
@@ -178,9 +226,41 @@ const userItems = computed(() => {
               <p v-if="auth.user.value?.email" class="truncate text-xs text-maroon-200">{{ auth.user.value.email }}</p>
             </div>
           </div>
+          <UButton block variant="subtle" color="neutral" icon="i-lucide-settings" label="Account settings" @click="openAccountSettings" />
           <UButton block variant="subtle" color="error" icon="i-lucide-log-out" label="Sign out" @click="closeDrawer; auth.logout(); navigateTo('/')" />
         </div>
       </template>
     </UDrawer>
+
+    <UModal v-model:open="accountOpen" title="Account settings" description="Update your password. Username and email are managed by an administrator.">
+      <template #body>
+        <form class="space-y-4" @submit.prevent="savePassword">
+          <div class="rounded-lg border border-default bg-muted/20 px-4 py-3 text-sm">
+            <p class="font-medium text-highlighted">{{ auth.user.value?.username }}</p>
+            <p class="text-muted">{{ auth.user.value?.email }}</p>
+          </div>
+
+          <UFormField label="Current password" name="currentPassword" required>
+            <UInput v-model="currentPassword" type="password" autocomplete="current-password" :disabled="savingPassword" />
+          </UFormField>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <UFormField label="New password" name="newPassword" required>
+              <UInput v-model="newPassword" type="password" autocomplete="new-password" :disabled="savingPassword" />
+            </UFormField>
+            <UFormField label="Confirm new password" name="confirmPassword" required>
+              <UInput v-model="confirmPassword" type="password" autocomplete="new-password" :disabled="savingPassword" />
+            </UFormField>
+          </div>
+
+          <UAlert v-if="passwordError" color="error" icon="i-lucide-circle-alert" :description="passwordError" />
+
+          <div class="flex justify-end gap-2">
+            <UButton label="Cancel" color="neutral" variant="ghost" :disabled="savingPassword" @click="accountOpen = false" />
+            <UButton type="submit" :loading="savingPassword">Update password</UButton>
+          </div>
+        </form>
+      </template>
+    </UModal>
   </div>
 </template>

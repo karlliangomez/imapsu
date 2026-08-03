@@ -65,14 +65,51 @@ const roleColor = (type?: string) => {
 }
 
 const updating = ref<number | null>(null)
+const saving = ref(false)
+const editOpen = ref(false)
+const editUser = ref<DirectoryUser | null>(null)
+const editUsername = ref('')
+const editEmail = ref('')
+const editError = ref('')
+
+const openEdit = (user: DirectoryUser) => {
+  editUser.value = user
+  editUsername.value = user.username
+  editEmail.value = user.email
+  editError.value = ''
+  editOpen.value = true
+}
+
+const saveEdit = async () => {
+  if (!editUser.value) return
+  editError.value = ''
+  if (!editUsername.value.trim() || !editEmail.value.trim()) {
+    editError.value = 'Username and email are required.'
+    return
+  }
+  saving.value = true
+  try {
+    await $api(`/api/auth/user/${editUser.value.id}`, {
+      method: 'PUT',
+      body: { username: editUsername.value, email: editEmail.value }
+    })
+    toast.add({ title: 'User updated', description: editUsername.value, color: 'success', icon: 'i-lucide-check-circle' })
+    editOpen.value = false
+    await refresh()
+  } catch (err) {
+    editError.value = getErrorMessage(err)
+  } finally {
+    saving.value = false
+  }
+}
 
 const changeRole = async (user: DirectoryUser, type: string) => {
   if (!ROLE_DOC_IDS[type]) return
   updating.value = user.id
   try {
-    await $api(`/api/users/${user.id}`, {
+    await $api(`/api/auth/user/${user.id}`, {
       method: 'PUT',
-      body: { role: ROLE_DOC_IDS[type] }
+      body: { role: type }
     })
     toast.add({ title: 'Role updated', description: `${user.username} is now ${roleLabel(type)}.`, color: 'success', icon: 'i-lucide-check-circle' })
     await refresh()
@@ -86,7 +123,7 @@ const changeRole = async (user: DirectoryUser, type: string) => {
 const remove = async (user: DirectoryUser) => {
   if (!confirm(`Delete user "${user.username}" (${user.email})? This cannot be undone.`)) return
   try {
-    await $api(`/api/users/${user.id}`, { method: 'DELETE' })
+    await $api(`/api/auth/user/${user.id}`, { method: 'DELETE' })
     toast.add({ title: 'User deleted', description: user.username, color: 'success', icon: 'i-lucide-check-circle' })
     await refresh()
   } catch (err) {
@@ -144,6 +181,16 @@ const remove = async (user: DirectoryUser) => {
 
             <UButton
               v-if="auth.isAdmin.value && !isSelf(user)"
+              label="Edit"
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="openEdit(user)"
+            />
+
+            <UButton
+              v-if="auth.isAdmin.value && !isSelf(user)"
               label="Delete"
               icon="i-lucide-trash-2"
               color="error"
@@ -155,5 +202,26 @@ const remove = async (user: DirectoryUser) => {
         </div>
       </UCard>
     </div>
+
+    <UModal v-model:open="editOpen" title="Edit user" :description="editUser ? `Update ${editUser.username}'s account details.` : ''">
+      <template #body>
+        <form class="space-y-4" @submit.prevent="saveEdit">
+          <UFormField label="Username" required>
+            <UInput v-model="editUsername" type="text" autocomplete="off" :disabled="saving" />
+          </UFormField>
+
+          <UFormField label="Email" required>
+            <UInput v-model="editEmail" type="email" autocomplete="off" :disabled="saving" />
+          </UFormField>
+
+          <UAlert v-if="editError" color="error" icon="i-lucide-circle-alert" :description="editError" />
+
+          <div class="flex justify-end gap-2">
+            <UButton label="Cancel" color="neutral" variant="ghost" :disabled="saving" @click="editOpen = false" />
+            <UButton type="submit" :loading="saving">Save changes</UButton>
+          </div>
+        </form>
+      </template>
+    </UModal>
   </main>
 </template>

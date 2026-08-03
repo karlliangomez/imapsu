@@ -52,5 +52,25 @@ export default {
         },
       },
     },
+    {
+      method: 'PUT',
+      path: '/auth/user/:id',
+      handler: 'api::auth.auth.updateUserByStaff',
+      config: {
+        auth: {
+          scope: ['plugin::users-permissions.user.update'],
+        },
+      },
+    },
+    {
+      method: 'DELETE',
+      path: '/auth/user/:id',
+      handler: 'api::auth.auth.deleteUserByStaff',
+      config: {
+        auth: {
+          scope: ['plugin::users-permissions.user.destroy'],
+        },
+      },
+    },
   ],
 };
