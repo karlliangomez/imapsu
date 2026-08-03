@@ -142,9 +142,9 @@ const formatDate = (value?: string) => value
               <UIcon
                 v-for="star in 5"
                 :key="star"
-                :name="star <= item.rating ? 'i-lucide-star' : 'i-lucide-star-outline'"
+                name="i-lucide-star"
                 class="size-4"
-                :class="star <= item.rating ? 'text-secondary' : 'text-muted'"
+                :class="star <= item.rating ? 'text-secondary fill-current' : 'text-toned'"
               />
             </div>
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">

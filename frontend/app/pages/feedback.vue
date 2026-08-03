@@ -146,8 +146,8 @@ const formatDate = (value?: string) => value
                 color="neutral"
                 variant="ghost"
                 square
-                :icon="star <= rating ? 'i-lucide-star' : 'i-lucide-star-outline'"
-                :class="star <= rating ? 'text-secondary' : 'text-toned'"
+                icon="i-lucide-star"
+                :class="star <= rating ? 'text-secondary fill-current' : 'text-toned'"
                 :aria-label="`Rate ${star} star${star > 1 ? 's' : ''}`"
                 :disabled="submitting"
                 @click="rating = star"
@@ -181,9 +181,9 @@ const formatDate = (value?: string) => value
                 <UIcon
                   v-for="star in 5"
                   :key="star"
-                  :name="star <= item.rating ? 'i-lucide-star' : 'i-lucide-star-outline'"
+                  name="i-lucide-star"
                   class="size-4"
-                  :class="star <= item.rating ? 'text-secondary' : 'text-toned'"
+                  :class="star <= item.rating ? 'text-secondary fill-current' : 'text-toned'"
                 />
               </div>
               <p class="text-xs text-muted">{{ formatDate(item.createdAt) }}</p>
