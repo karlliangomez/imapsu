@@ -3,6 +3,8 @@ import type { Core } from '@strapi/strapi';
 const config: Core.Config.Middlewares = [
   'strapi::logger',
   'strapi::errors',
+  'global::audit-errors',
+  'global::audit-writes',
   'strapi::security',
   'strapi::cors',
   'strapi::poweredBy',

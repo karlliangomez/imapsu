@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "audit_logs",
+  "info": {
+    "singularName": "audit-log",
+    "pluralName": "audit-logs",
+    "displayName": "Audit Log"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "action": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "created",
+        "updated",
+        "deleted",
+        "account-created",
+        "account-updated",
+        "account-activated",
+        "account-deactivated",
+        "account-deleted",
+        "role-changed",
+        "permissions-updated",
+        "login-success",
+        "login-failed",
+        "system-error"
+      ]
+    },
+    "entityType": {
+      "type": "string"
+    },
+    "entityId": {
+      "type": "string"
+    },
+    "entityLabel": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "actorId": {
+      "type": "integer"
+    },
+    "actorUsername": {
+      "type": "string"
+    },
+    "actorRole": {
+      "type": "string"
+    }
+  }
+}

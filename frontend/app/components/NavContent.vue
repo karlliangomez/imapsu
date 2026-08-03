@@ -52,7 +52,7 @@ const roleLinks = computed<{ label: string; links: NavLink[] }[]>(() => {
     })
   }
 
-  if (auth.isStaff.value) {
+  if (auth.isOas.value) {
     sections.push({
       label: 'Management',
       links: [
@@ -63,8 +63,20 @@ const roleLinks = computed<{ label: string; links: NavLink[] }[]>(() => {
         { label: 'Tenancies', icon: 'i-lucide-key-round', to: '/admin/tenancies' },
         { label: 'Bills', icon: 'i-lucide-receipt', to: '/admin/bills' },
         { label: 'Maintenance', icon: 'i-lucide-wrench', to: '/admin/maintenance' },
-        { label: 'Feedback', icon: 'i-lucide-message-square', to: '/admin/feedback' },
-        { label: 'Users', icon: 'i-lucide-users', to: '/admin/users' }
+        { label: 'Feedback', icon: 'i-lucide-message-square', to: '/admin/feedback' }
+      ]
+    })
+  }
+
+  if (auth.isAdmin.value) {
+    sections.push({
+      label: 'Administration',
+      links: [
+        { label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: '/admin' },
+        { label: 'Users', icon: 'i-lucide-users', to: '/admin/users' },
+        { label: 'Roles & permissions', icon: 'i-lucide-shield-check', to: '/admin/roles' },
+        { label: 'Audit logs', icon: 'i-lucide-scroll-text', to: '/admin/audit-logs' },
+        { label: 'System monitoring', icon: 'i-lucide-activity', to: '/admin/system-monitoring' }
       ]
     })
   }

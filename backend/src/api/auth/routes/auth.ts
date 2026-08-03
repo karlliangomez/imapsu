@@ -6,6 +6,14 @@ export default {
   routes: [
     {
       method: 'POST',
+      path: '/auth/login',
+      handler: 'api::auth.auth.login',
+      config: {
+        auth: false,
+      },
+    },
+    {
+      method: 'POST',
       path: '/auth/register-with-role',
       handler: 'api::auth.auth.registerWithRole',
       config: {
@@ -18,7 +26,27 @@ export default {
       handler: 'api::auth.auth.createUserByStaff',
       config: {
         auth: {
-          scope: ['plugin::users-permissions.user.find'],
+          scope: ['api::auth.auth.createUserByStaff'],
+        },
+      },
+    },
+    {
+      method: 'GET',
+      path: '/roles',
+      handler: 'api::auth.auth.listRoles',
+      config: {
+        auth: {
+          scope: ['api::auth.auth.listRoles'],
+        },
+      },
+    },
+    {
+      method: 'PUT',
+      path: '/roles/:type/permissions',
+      handler: 'api::auth.auth.updateRolePermissions',
+      config: {
+        auth: {
+          scope: ['api::auth.auth.updateRolePermissions'],
         },
       },
     },

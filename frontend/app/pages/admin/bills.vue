@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
-  roles: ['oas', 'admin']
+  roles: ['oas']
 })
 
 type Bill = {

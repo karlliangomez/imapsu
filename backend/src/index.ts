@@ -41,6 +41,60 @@ const ANNOUNCEMENT_READ = [
   'api::announcement.announcement.findOne',
 ];
 
+// Business/workflow actions owned exclusively by OAS. These are revoked from
+// the administrator role at every bootstrap so the admin surface stays focused
+// on user management, roles & permissions, audit logs and system monitoring.
+const BUSINESS_ACTIONS = [
+  'api::property-space.property-space.find',
+  'api::property-space.property-space.findOne',
+  'api::property-space.property-space.create',
+  'api::property-space.property-space.update',
+  'api::property-space.property-space.delete',
+  'api::announcement.announcement.find',
+  'api::announcement.announcement.findOne',
+  'api::announcement.announcement.create',
+  'api::announcement.announcement.update',
+  'api::announcement.announcement.delete',
+  'api::rental-application.rental-application.find',
+  'api::rental-application.rental-application.findOne',
+  'api::rental-application.rental-application.create',
+  'api::rental-application.rental-application.update',
+  'api::rental-application.rental-application.delete',
+  'api::bill.bill.find',
+  'api::bill.bill.findOne',
+  'api::bill.bill.create',
+  'api::bill.bill.update',
+  'api::bill.bill.delete',
+  'api::tenancy.tenancy.find',
+  'api::tenancy.tenancy.findOne',
+  'api::tenancy.tenancy.create',
+  'api::tenancy.tenancy.update',
+  'api::tenancy.tenancy.delete',
+  'api::renewal-intent.renewal-intent.find',
+  'api::renewal-intent.renewal-intent.findOne',
+  'api::renewal-intent.renewal-intent.create',
+  'api::renewal-intent.renewal-intent.update',
+  'api::renewal-intent.renewal-intent.delete',
+  'api::maintenance-ticket.maintenance-ticket.find',
+  'api::maintenance-ticket.maintenance-ticket.findOne',
+  'api::maintenance-ticket.maintenance-ticket.create',
+  'api::maintenance-ticket.maintenance-ticket.update',
+  'api::maintenance-ticket.maintenance-ticket.delete',
+  'api::feedback.feedback.find',
+  'api::feedback.feedback.findOne',
+  'api::feedback.feedback.create',
+  'plugin::upload.content-api.upload',
+  'plugin::upload.content-api.find',
+];
+
+// OAS must never manage existing users: account creation (tenancy flow) only.
+const OAS_FORBIDDEN_ACTIONS = [
+  'plugin::users-permissions.user.find',
+  'plugin::users-permissions.user.findOne',
+  'plugin::users-permissions.user.update',
+  'plugin::users-permissions.user.destroy',
+];
+
 // Content-API actions granted to each role. The authenticated role only gets
 // the shared baseline (announcements + properties read); role-specific
 // capabilities are granted to the custom public roles below. Properties are
@@ -136,57 +190,30 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'api::maintenance-ticket.maintenance-ticket.delete',
     'api::feedback.feedback.find',
     'api::feedback.feedback.findOne',
-    'plugin::users-permissions.user.find',
-    'plugin::users-permissions.user.findOne',
+    // Tenancy-flow account creation only: OAS can create tenant-facing
+    // accounts but cannot list, edit or delete existing users.
+    'api::auth.auth.createUserByStaff',
     'plugin::upload.content-api.upload',
     'plugin::upload.content-api.find',
   ],
   admin: [
     'api::auth.auth.me',
     'api::auth.auth.updateAccount',
-    'api::property-space.property-space.find',
-    'api::property-space.property-space.findOne',
-    'api::property-space.property-space.create',
-    'api::property-space.property-space.update',
-    'api::property-space.property-space.delete',
-    'api::announcement.announcement.find',
-    'api::announcement.announcement.findOne',
-    'api::announcement.announcement.create',
-    'api::announcement.announcement.update',
-    'api::announcement.announcement.delete',
-    'api::rental-application.rental-application.find',
-    'api::rental-application.rental-application.findOne',
-    'api::rental-application.rental-application.create',
-    'api::rental-application.rental-application.update',
-    'api::rental-application.rental-application.delete',
-    'api::bill.bill.find',
-    'api::bill.bill.findOne',
-    'api::bill.bill.create',
-    'api::bill.bill.update',
-    'api::bill.bill.delete',
-    'api::tenancy.tenancy.find',
-    'api::tenancy.tenancy.findOne',
-    'api::tenancy.tenancy.create',
-    'api::tenancy.tenancy.update',
-    'api::tenancy.tenancy.delete',
-    'api::renewal-intent.renewal-intent.find',
-    'api::renewal-intent.renewal-intent.findOne',
-    'api::renewal-intent.renewal-intent.create',
-    'api::renewal-intent.renewal-intent.update',
-    'api::renewal-intent.renewal-intent.delete',
-    'api::maintenance-ticket.maintenance-ticket.find',
-    'api::maintenance-ticket.maintenance-ticket.findOne',
-    'api::maintenance-ticket.maintenance-ticket.create',
-    'api::maintenance-ticket.maintenance-ticket.update',
-    'api::maintenance-ticket.maintenance-ticket.delete',
-    'api::feedback.feedback.find',
-    'api::feedback.feedback.findOne',
+    // User management (list, inspect, create, edit, block/unblock, delete).
+    'api::auth.auth.createUserByStaff',
     'plugin::users-permissions.user.find',
     'plugin::users-permissions.user.findOne',
     'plugin::users-permissions.user.update',
     'plugin::users-permissions.user.destroy',
-    'plugin::upload.content-api.upload',
-    'plugin::upload.content-api.find',
+    // Roles & permissions management.
+    'api::auth.auth.listRoles',
+    'api::auth.auth.updateRolePermissions',
+    // Audit logs.
+    'api::audit-log.audit-log.find',
+    'api::audit-log.audit-log.findOne',
+    'api::audit-log.audit-log.delete',
+    // System monitoring.
+    'api::system.system.health',
   ],
 };
 
@@ -211,6 +238,27 @@ async function ensureRolePermissions(strapi: Core.Strapi) {
     for (const action of actions) {
       await ensurePermission(strapi, role.id, action);
     }
+  }
+}
+
+// Revoke stale or forbidden actions so role re-scoping actually takes effect
+// (ensureRolePermissions only ever adds).
+async function pruneForbiddenPermissions(strapi: Core.Strapi) {
+  const roleModel = strapi.db.query(ROLE_UID);
+  const permissionModel = strapi.db.query(PERMISSION_UID);
+
+  const admin = await roleModel.findOne({ where: { type: 'admin' } });
+  if (admin) {
+    await permissionModel.deleteMany({
+      where: { role: admin.id, action: { $in: BUSINESS_ACTIONS } },
+    });
+  }
+
+  const oas = await roleModel.findOne({ where: { type: 'oas' } });
+  if (oas) {
+    await permissionModel.deleteMany({
+      where: { role: oas.id, action: { $in: OAS_FORBIDDEN_ACTIONS } },
+    });
   }
 }
 
@@ -279,5 +327,6 @@ export default {
     }
 
     await ensureRolePermissions(strapi);
+    await pruneForbiddenPermissions(strapi);
   },
 };

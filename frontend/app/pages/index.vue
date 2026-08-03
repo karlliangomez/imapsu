@@ -3,6 +3,12 @@ useHead({ title: 'iMapSU | Campus Property Management' })
 
 const auth = useAuth()
 
+const primaryCta = computed(() => {
+  if (!auth.isAuthenticated.value) return '/login'
+  if (auth.isStaff.value) return '/admin'
+  return '/properties'
+})
+
 const features = [
   {
     icon: 'i-lucide-map',
@@ -41,7 +47,7 @@ const features = [
         </p>
 
         <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <UButton :to="auth.isAuthenticated.value ? '/properties' : '/login'" size="lg" label="Navigate the map" icon="i-lucide-navigation" />
+          <UButton :to="primaryCta" size="lg" label="Navigate the map" icon="i-lucide-navigation" />
           <UButton v-if="!auth.isAuthenticated.value" to="/register" size="lg" color="gold" variant="subtle" label="Create an account" />
           <UButton v-else to="/account" size="lg" color="gold" variant="subtle" label="My account" />
         </div>

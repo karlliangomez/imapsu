@@ -477,6 +477,58 @@ export interface ApiAnnouncementAnnouncement
   };
 }
 
+export interface ApiAuditLogAuditLog extends Struct.CollectionTypeSchema {
+  collectionName: 'audit_logs';
+  info: {
+    displayName: 'Audit Log';
+    pluralName: 'audit-logs';
+    singularName: 'audit-log';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    action: Schema.Attribute.Enumeration<
+      [
+        'created',
+        'updated',
+        'deleted',
+        'account-created',
+        'account-updated',
+        'account-activated',
+        'account-deactivated',
+        'account-deleted',
+        'role-changed',
+        'permissions-updated',
+        'login-success',
+        'login-failed',
+        'system-error',
+      ]
+    > &
+      Schema.Attribute.Required;
+    actorId: Schema.Attribute.Integer;
+    actorRole: Schema.Attribute.String;
+    actorUsername: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    entityId: Schema.Attribute.String;
+    entityLabel: Schema.Attribute.String;
+    entityType: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::audit-log.audit-log'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiBillBill extends Struct.CollectionTypeSchema {
   collectionName: 'bills';
   info: {
@@ -1340,6 +1392,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::announcement.announcement': ApiAnnouncementAnnouncement;
+      'api::audit-log.audit-log': ApiAuditLogAuditLog;
       'api::bill.bill': ApiBillBill;
       'api::feedback.feedback': ApiFeedbackFeedback;
       'api::maintenance-ticket.maintenance-ticket': ApiMaintenanceTicketMaintenanceTicket;

@@ -42,7 +42,7 @@ export const useAuth = () => {
   }
 
   const login = async (identifier: string, password: string) => {
-    const data = await $fetch<AuthResponse>('/api/auth/local', {
+    const data = await $fetch<AuthResponse>('/api/auth/login', {
       method: 'POST',
       baseURL: config.public.strapiUrl,
       body: { identifier, password }
