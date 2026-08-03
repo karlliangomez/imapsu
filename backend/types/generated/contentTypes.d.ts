@@ -703,6 +703,46 @@ export interface ApiRentalApplicationRentalApplication
   };
 }
 
+export interface ApiStatusHistoryStatusHistory
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'status_histories';
+  info: {
+    displayName: 'Status History';
+    pluralName: 'status-histories';
+    singularName: 'status-history';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    changedAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    changedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    entityId: Schema.Attribute.String & Schema.Attribute.Required;
+    entityType: Schema.Attribute.Enumeration<
+      ['rental-application', 'maintenance-ticket', 'bill', 'tenancy']
+    > &
+      Schema.Attribute.Required;
+    fromStatus: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::status-history.status-history'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    toStatus: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiTenancyTenancy extends Struct.CollectionTypeSchema {
   collectionName: 'tenancies';
   info: {
@@ -1261,6 +1301,7 @@ declare module '@strapi/strapi' {
       'api::maintenance-ticket.maintenance-ticket': ApiMaintenanceTicketMaintenanceTicket;
       'api::property-space.property-space': ApiPropertySpacePropertySpace;
       'api::rental-application.rental-application': ApiRentalApplicationRentalApplication;
+      'api::status-history.status-history': ApiStatusHistoryStatusHistory;
       'api::tenancy.tenancy': ApiTenancyTenancy;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

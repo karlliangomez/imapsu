@@ -67,6 +67,18 @@ const formatDate = (value?: string) => {
 
 const updating = ref<number | string | null>(null)
 
+const historyOpen = ref(false)
+const historyTarget = ref<{ type: 'rental-application'; id: string; label: string } | null>(null)
+
+const openHistory = (item: RentalApplication) => {
+  historyTarget.value = {
+    type: 'rental-application',
+    id: String(item.documentId ?? item.id),
+    label: item.propertySpace?.name ?? 'Rental application'
+  }
+  historyOpen.value = true
+}
+
 const updateStatus = async (item: RentalApplication, statusValue: string) => {
   if (statusValue === item.status) return
   updating.value = item.documentId ?? item.id
@@ -135,8 +147,17 @@ const updateStatus = async (item: RentalApplication, statusValue: string) => {
             :disabled="updating === (item.documentId ?? item.id)"
             @update:model-value="(value: unknown) => value && updateStatus(item, String(value))"
           />
+          <UButton label="History" icon="i-lucide-history" color="neutral" variant="subtle" size="sm" @click="openHistory(item)" />
         </div>
       </UCard>
     </div>
+
+    <StatusHistoryModal
+      v-if="historyTarget"
+      v-model:open="historyOpen"
+      :entity-type="historyTarget.type"
+      :entity-id="historyTarget.id"
+      :entity-label="historyTarget.label"
+    />
   </main>
 </template>

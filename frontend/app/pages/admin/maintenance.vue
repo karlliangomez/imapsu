@@ -107,6 +107,18 @@ const counts = computed(() => ({
   completed: tickets.value.filter(t => t.status === 'Completed').length
 }))
 
+const historyOpen = ref(false)
+const historyTarget = ref<{ type: 'maintenance-ticket'; id: string; label: string } | null>(null)
+
+const openHistory = (ticket: MaintenanceTicket) => {
+  historyTarget.value = {
+    type: 'maintenance-ticket',
+    id: String(ticket.documentId ?? ticket.id),
+    label: `${ticket.category} — ${ticket.propertySpace?.name ?? 'ticket'}`
+  }
+  historyOpen.value = true
+}
+
 const setStatus = async (ticket: MaintenanceTicket, newStatus: MaintenanceTicket['status']) => {
   const previous = ticket.status
   ticket.status = newStatus
@@ -336,11 +348,20 @@ const remove = async (ticket: MaintenanceTicket) => {
             <UButton v-if="item.status !== 'In Progress'" label="Mark in progress" icon="i-lucide-play" color="secondary" variant="subtle" size="sm" @click="setStatus(item, 'In Progress')" />
             <UButton v-if="item.status !== 'Completed'" label="Mark completed" icon="i-lucide-check-check" color="success" variant="subtle" size="sm" @click="setStatus(item, 'Completed')" />
             <UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="subtle" size="sm" @click="openEdit(item)" />
+            <UButton label="History" icon="i-lucide-history" color="neutral" variant="subtle" size="sm" @click="openHistory(item)" />
             <UButton label="Delete" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" @click="remove(item)" />
           </div>
         </UCard>
       </div>
     </div>
+
+    <StatusHistoryModal
+      v-if="historyTarget"
+      v-model:open="historyOpen"
+      :entity-type="historyTarget.type"
+      :entity-id="historyTarget.id"
+      :entity-label="historyTarget.label"
+    />
   </main>
 
   <UModal v-model:open="formOpen" :title="editing ? 'Edit ticket' : 'New ticket'" :description="editing ? 'Update the details of this maintenance ticket.' : 'Log a maintenance issue reported by a tenant.'">

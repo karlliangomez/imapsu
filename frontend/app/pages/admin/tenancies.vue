@@ -205,6 +205,18 @@ const remove = async (tenancy: Tenancy) => {
     toast.add({ title: 'Could not delete tenancy', description: getErrorMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
   }
 }
+
+const historyOpen = ref(false)
+const historyTarget = ref<{ type: 'tenancy'; id: string; label: string } | null>(null)
+
+const openHistory = (tenancy: Tenancy) => {
+  historyTarget.value = {
+    type: 'tenancy',
+    id: String(tenancy.documentId ?? tenancy.id),
+    label: tenancy.propertySpace?.name ?? 'Tenancy'
+  }
+  historyOpen.value = true
+}
 </script>
 
 <template>
@@ -251,10 +263,19 @@ const remove = async (tenancy: Tenancy) => {
 
         <div class="mt-4 flex gap-2 border-t border-default pt-4">
           <UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="subtle" size="sm" @click="openEdit(tenancy)" />
+          <UButton label="History" icon="i-lucide-history" color="neutral" variant="subtle" size="sm" @click="openHistory(tenancy)" />
           <UButton label="Delete" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" @click="remove(tenancy)" />
         </div>
       </UCard>
     </div>
+
+    <StatusHistoryModal
+      v-if="historyTarget"
+      v-model:open="historyOpen"
+      :entity-type="historyTarget.type"
+      :entity-id="historyTarget.id"
+      :entity-label="historyTarget.label"
+    />
 
     <UModal v-model:open="formOpen" :title="editing ? 'Edit tenancy' : 'Create tenancy'" description="Assign a vacant space to a user.">
       <template #body>

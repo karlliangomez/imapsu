@@ -265,6 +265,18 @@ const remove = async (bill: Bill) => {
     toast.add({ title: 'Could not delete bill', description: getErrorMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
   }
 }
+
+const historyOpen = ref(false)
+const historyTarget = ref<{ type: 'bill'; id: string; label: string } | null>(null)
+
+const openHistory = (bill: Bill) => {
+  historyTarget.value = {
+    type: 'bill',
+    id: String(bill.documentId ?? bill.id),
+    label: `${bill.period || 'Bill'} — ${bill.tenancy?.propertySpace?.name ?? 'bill'}`
+  }
+  historyOpen.value = true
+}
 </script>
 
 <template>
@@ -351,11 +363,20 @@ const remove = async (bill: Bill) => {
 
         <div class="mt-4 flex gap-2 border-t border-default pt-4">
           <UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="subtle" size="sm" @click="openEdit(bill)" />
+          <UButton label="History" icon="i-lucide-history" color="neutral" variant="subtle" size="sm" @click="openHistory(bill)" />
           <UButton label="Delete" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" @click="remove(bill)" />
         </div>
       </UCard>
       </template>
     </div>
+
+    <StatusHistoryModal
+      v-if="historyTarget"
+      v-model:open="historyOpen"
+      :entity-type="historyTarget.type"
+      :entity-id="historyTarget.id"
+      :entity-label="historyTarget.label"
+    />
 
     <UModal v-model:open="formOpen" :title="editing ? 'Edit bill' : 'Issue bill'" description="Create or update a bill for a tenancy.">
       <template #body>

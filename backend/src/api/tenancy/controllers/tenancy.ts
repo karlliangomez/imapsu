@@ -9,6 +9,7 @@
 import { factories } from '@strapi/strapi';
 import type { Core } from '@strapi/strapi';
 import { isStaff } from '../../../utils/access';
+import { recordStatusChange } from '../../../utils/status-history';
 
 const UID = 'api::tenancy.tenancy';
 const PROPERTY_UID = 'api::property-space.property-space';
@@ -61,6 +62,44 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       const entity = await service().findOne(ctx.params.id, { ...query, filters });
       if (!entity) {
         return ctx.notFound();
+      }
+
+      const sanitized = await ctrl.sanitizeOutput(entity, ctx);
+      return ctrl.transformResponse(sanitized);
+    },
+
+    // Staff only. Updates record status changes in the audit log.
+    async update(ctx) {
+      const user = ctx.state.user as { id: number } | undefined;
+      if (!user || !isStaff(user)) {
+        return ctx.forbidden('Only staff can update tenancies');
+      }
+
+      const body = (ctx.request.body ?? {}) as Record<string, unknown>;
+      const data = (body.data ?? body) as Record<string, unknown>;
+
+      const ctrl = base(this);
+      await ctrl.validateInput(data, ctx);
+      const sanitizedData = (await ctrl.sanitizeInput(data, ctx)) as Record<string, unknown>;
+
+      const previous =
+        sanitizedData.status !== undefined
+          ? await service().findOne(ctx.params.id, { fields: ['status', 'documentId'] })
+          : null;
+
+      const entity = await service().update(ctx.params.id, { data: sanitizedData });
+      if (!entity) {
+        return ctx.notFound();
+      }
+
+      if (previous && sanitizedData.status !== undefined && sanitizedData.status !== previous.status) {
+        await recordStatusChange(strapi, {
+          entityType: 'tenancy',
+          entityId: previous.documentId ?? ctx.params.id,
+          fromStatus: previous.status,
+          toStatus: sanitizedData.status as string,
+          changedBy: user.id,
+        });
       }
 
       const sanitized = await ctrl.sanitizeOutput(entity, ctx);

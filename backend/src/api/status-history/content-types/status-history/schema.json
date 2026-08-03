@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "status_histories",
+  "info": {
+    "singularName": "status-history",
+    "pluralName": "status-histories",
+    "displayName": "Status History"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "entityType": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "rental-application",
+        "maintenance-ticket",
+        "bill",
+        "tenancy"
+      ]
+    },
+    "entityId": {
+      "type": "string",
+      "required": true
+    },
+    "fromStatus": {
+      "type": "string"
+    },
+    "toStatus": {
+      "type": "string",
+      "required": true
+    },
+    "changedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "changedAt": {
+      "type": "datetime",
+      "required": true
+    }
+  }
+}

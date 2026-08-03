@@ -10,6 +10,7 @@ import { factories } from '@strapi/strapi';
 import type { Core } from '@strapi/strapi';
 import { isStaff } from '../../../utils/access';
 import { extractOrNumberFromFile } from '../../../utils/or-number';
+import { recordStatusChange } from '../../../utils/status-history';
 
 const UID = 'api::bill.bill';
 
@@ -104,9 +105,24 @@ export default factories.createCoreController(UID, ({ strapi }) => {
           sanitizedData.paidAt = null;
         }
 
+        const previous =
+          sanitizedData.status !== undefined
+            ? await service().findOne(ctx.params.id, { fields: ['status', 'documentId'] })
+            : null;
+
         const entity = await service().update(ctx.params.id, { data: sanitizedData });
         if (!entity) {
           return ctx.notFound();
+        }
+
+        if (previous && sanitizedData.status !== undefined && sanitizedData.status !== previous.status) {
+          await recordStatusChange(strapi, {
+            entityType: 'bill',
+            entityId: previous.documentId ?? ctx.params.id,
+            fromStatus: previous.status,
+            toStatus: sanitizedData.status as string,
+            changedBy: user.id,
+          });
         }
 
         const sanitized = await ctrl.sanitizeOutput(entity, ctx);
@@ -160,6 +176,16 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       const entity = await service().update(existing.documentId, { data: sanitizedData });
       if (!entity) {
         return ctx.notFound();
+      }
+
+      if (sanitizedData.status !== undefined && sanitizedData.status !== existing.status) {
+        await recordStatusChange(strapi, {
+          entityType: 'bill',
+          entityId: existing.documentId,
+          fromStatus: existing.status,
+          toStatus: sanitizedData.status as string,
+          changedBy: user.id,
+        });
       }
 
       // Removing the receipt also deletes the uploaded file (best effort; a file
