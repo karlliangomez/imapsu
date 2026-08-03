@@ -52,13 +52,13 @@ const { data, status, error, refresh } = await useFetch<AuditListResponse>('/api
 const entries = computed(() => data.value?.data ?? [])
 const total = computed(() => data.value?.meta?.pagination?.total ?? entries.value.length)
 
-const actionFilter = ref<string>('')
+const actionFilter = ref<string>('all')
 const search = ref('')
 
 const filtered = computed(() => {
   const term = search.value.trim().toLowerCase()
   return entries.value.filter(entry => {
-    if (actionFilter.value && entry.action !== actionFilter.value) return false
+    if (actionFilter.value !== 'all' && entry.action !== actionFilter.value) return false
     if (!term) return true
     const haystack = [entry.description, entry.entityLabel, entry.actorUsername, entry.entityType]
       .filter(Boolean)
@@ -131,7 +131,7 @@ const formatDate = (value?: string) => value
 
     <div class="mb-5 flex flex-col gap-3 sm:flex-row">
       <UInput v-model="search" icon="i-lucide-search" placeholder="Search description, entity or actor…" class="w-full sm:max-w-sm" />
-      <USelect v-model="actionFilter" :items="[{ label: 'All actions', value: '' }, ...ACTIONS.map(action => ({ label: actionLabel(action), value: action }))]" class="w-full sm:w-56" />
+      <USelect v-model="actionFilter" :items="[{ label: 'All actions', value: 'all' }, ...ACTIONS.map(action => ({ label: actionLabel(action), value: action }))]" class="w-full sm:w-56" />
     </div>
 
     <div v-if="status === 'pending'" class="space-y-3">
