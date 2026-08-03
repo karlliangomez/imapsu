@@ -111,7 +111,7 @@ const updateStatus = async (item: RentalApplication, statusValue: string) => {
             <p class="font-medium text-highlighted">{{ item.propertySpace?.name ?? 'Property removed' }}</p>
             <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
               <span v-if="item.propertySpace" class="font-mono">{{ item.propertySpace.propertyCode }}</span>
-              <span v-if="item.user" class="flex items-center gap-1"><UIcon name="i-lucide-user" class="size-3.5" />{{ item.user.username }} Â· {{ item.user.email }}</span>
+              <span v-if="item.user" class="flex items-center gap-1"><UIcon name="i-lucide-user" class="size-3.5" />{{ item.user.username }} · {{ item.user.email }}</span>
               <span>Submitted {{ formatDate(item.createdAt) }}</span>
             </p>
           </div>

@@ -60,7 +60,7 @@ const { data: tenancyData } = await useFetch<ListResponse<{ documentId: string; 
 
 const bills = computed(() => data.value?.data ?? [])
 const tenancyOptions = computed(() => (tenancyData.value?.data ?? []).map(tenancy => ({
-  label: `${tenancy.propertySpace?.name ?? 'Property'} â€” ${tenancy.user?.username ?? 'No user'}`,
+  label: `${tenancy.propertySpace?.name ?? 'Property'} — ${tenancy.user?.username ?? 'No user'}`,
   value: tenancy.documentId
 })))
 const filterTenancyOptions = computed(() => [{ label: 'All tenants', value: 'all' }, ...tenancyOptions.value])
@@ -101,7 +101,7 @@ const clearFilters = () => {
 }
 
 const formatCurrency = (amount?: number | string) => amount == null || amount === ''
-  ? 'â€”'
+  ? '—'
   : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(Number(amount))
 
 const formatDate = (value?: string) => value
@@ -302,7 +302,7 @@ const remove = async (bill: Bill) => {
             <UInput v-model="filterPeriod" placeholder="e.g. 2026-08" />
           </UFormField>
           <UFormField label="Search">
-            <UInput v-model="filterSearch" placeholder="Tenant, space, codeâ€¦" icon="i-lucide-search" />
+            <UInput v-model="filterSearch" placeholder="Tenant, space, code…" icon="i-lucide-search" />
           </UFormField>
         </div>
         <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -334,17 +334,17 @@ const remove = async (bill: Bill) => {
           <div><dt class="text-xs text-muted">Electric</dt><dd class="font-medium text-highlighted">{{ formatCurrency(bill.electricCharge) }}</dd></div>
           <div><dt class="text-xs text-muted">Water</dt><dd class="font-medium text-highlighted">{{ formatCurrency(bill.waterCharge) }}</dd></div>
           <div><dt class="text-xs text-muted">Additional charges</dt><dd class="font-medium text-highlighted">{{ formatCurrency(bill.additionalCharges) }}</dd></div>
-          <div><dt class="text-xs text-muted">Due date</dt><dd class="font-medium text-highlighted">{{ formatDate(bill.dueDate) || 'â€”' }}</dd></div>
-          <div v-if="bill.status === 'Paid'"><dt class="text-xs text-muted">Paid on</dt><dd class="font-medium text-highlighted">{{ formatDateTime(bill.paidAt) || 'â€”' }}</dd></div>
+          <div><dt class="text-xs text-muted">Due date</dt><dd class="font-medium text-highlighted">{{ formatDate(bill.dueDate) || '—' }}</dd></div>
+          <div v-if="bill.status === 'Paid'"><dt class="text-xs text-muted">Paid on</dt><dd class="font-medium text-highlighted">{{ formatDateTime(bill.paidAt) || '—' }}</dd></div>
           <div>
             <dt class="text-xs text-muted">OR No.</dt>
-            <dd class="font-mono font-medium text-highlighted">{{ bill.orNumber || 'â€”' }}</dd>
+            <dd class="font-mono font-medium text-highlighted">{{ bill.orNumber || '—' }}</dd>
           </div>
           <div>
             <dt class="text-xs text-muted">Receipt</dt>
             <dd>
               <a v-if="bill.receipt" :href="`${baseURL}${bill.receipt.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"><UIcon name="i-lucide-file-text" class="size-3.5" />View</a>
-              <span v-else class="text-muted">â€”</span>
+              <span v-else class="text-muted">—</span>
             </dd>
           </div>
         </dl>
@@ -421,8 +421,8 @@ const remove = async (bill: Bill) => {
             <p class="text-xs font-medium text-muted">Summary</p>
             <dl class="mt-2 space-y-1 text-sm">
               <div class="flex items-center justify-between"><dt class="text-muted">Rent</dt><dd class="font-medium text-highlighted">{{ formatCurrency(rentCharge) }}</dd></div>
-              <div class="flex items-center justify-between"><dt class="text-muted">Electric ({{ electricUsage }} units Ã— {{ formatCurrency(Number(form.electricRate) || 0) }})</dt><dd class="font-medium text-highlighted">{{ formatCurrency(electricCharge) }}</dd></div>
-              <div class="flex items-center justify-between"><dt class="text-muted">Water ({{ waterUsage }} units Ã— {{ formatCurrency(Number(form.waterRate) || 0) }})</dt><dd class="font-medium text-highlighted">{{ formatCurrency(waterCharge) }}</dd></div>
+              <div class="flex items-center justify-between"><dt class="text-muted">Electric ({{ electricUsage }} units × {{ formatCurrency(Number(form.electricRate) || 0) }})</dt><dd class="font-medium text-highlighted">{{ formatCurrency(electricCharge) }}</dd></div>
+              <div class="flex items-center justify-between"><dt class="text-muted">Water ({{ waterUsage }} units × {{ formatCurrency(Number(form.waterRate) || 0) }})</dt><dd class="font-medium text-highlighted">{{ formatCurrency(waterCharge) }}</dd></div>
               <div class="flex items-center justify-between"><dt class="text-muted">Additional charges</dt><dd class="font-medium text-highlighted">{{ formatCurrency(additionalChargesNum) }}</dd></div>
               <div class="flex items-center justify-between border-t border-default pt-2"><dt class="font-medium text-highlighted">Total</dt><dd class="font-semibold text-highlighted">{{ formatCurrency(totalAmount) }}</dd></div>
             </dl>

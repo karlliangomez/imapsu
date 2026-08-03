@@ -51,11 +51,13 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   authenticated: [
     'api::auth.auth.me',
+    'api::auth.auth.updateAccount',
     ...PROPERTY_READ,
     ...ANNOUNCEMENT_READ,
   ],
   student: [
     'api::auth.auth.me',
+    'api::auth.auth.updateAccount',
     ...PROPERTY_READ,
     ...ANNOUNCEMENT_READ,
     'api::feedback.feedback.find',
@@ -64,6 +66,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   'aspiring-tenant': [
     'api::auth.auth.me',
+    'api::auth.auth.updateAccount',
     ...PROPERTY_READ,
     ...ANNOUNCEMENT_READ,
     'api::rental-application.rental-application.find',
@@ -74,6 +77,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   'current-tenant': [
     'api::auth.auth.me',
+    'api::auth.auth.updateAccount',
     ...PROPERTY_READ,
     ...ANNOUNCEMENT_READ,
     'api::maintenance-ticket.maintenance-ticket.find',
@@ -90,6 +94,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   oas: [
     'api::auth.auth.me',
+    'api::auth.auth.updateAccount',
     'api::property-space.property-space.find',
     'api::property-space.property-space.findOne',
     'api::property-space.property-space.create',
@@ -129,6 +134,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   admin: [
     'api::auth.auth.me',
+    'api::auth.auth.updateAccount',
     'api::property-space.property-space.find',
     'api::property-space.property-space.findOne',
     'api::property-space.property-space.create',

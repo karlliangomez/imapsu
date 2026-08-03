@@ -52,7 +52,7 @@ const { data: propertyData } = await useFetch<ListResponse<PropertySpace>>('/api
 const applications = computed(() => data.value?.data ?? [])
 const vacantProperties = computed(() => propertyData.value?.data ?? [])
 const propertyOptions = computed(() => vacantProperties.value.map(property => ({
-  label: `${property.name} (${property.propertyCode})${property.monthlyRent ? ` Â· â‚±${Number(property.monthlyRent).toLocaleString()}` : ''}`,
+  label: `${property.name} (${property.propertyCode})${property.monthlyRent ? ` · ₱${Number(property.monthlyRent).toLocaleString()}` : ''}`,
   value: property.documentId
 })))
 
@@ -205,7 +205,7 @@ const formatDate = (value?: string) => {
             </div>
 
             <dl class="mt-4 grid grid-cols-2 gap-4 text-sm">
-              <div><dt class="text-xs text-muted">Property</dt><dd class="font-medium text-highlighted">{{ item.propertySpace?.name ?? 'â€”' }}</dd></div>
+              <div><dt class="text-xs text-muted">Property</dt><dd class="font-medium text-highlighted">{{ item.propertySpace?.name ?? '—' }}</dd></div>
               <div><dt class="text-xs text-muted">Letter of intent</dt><dd class="font-medium text-highlighted">{{ item.letterOfIntent ? 'Attached' : 'Not uploaded' }}</dd></div>
             </dl>
 
@@ -236,7 +236,7 @@ const formatDate = (value?: string) => {
 
         <UFormField label="Letter of intent" name="letterOfIntent" required>
           <UInput :key="letterFormKey" type="file" accept=".pdf,.doc,.docx" :disabled="submitting" :ui="{ leading: 'none' }" @change="(event: Event) => { const input = event.target as HTMLInputElement; letterFile = input.files?.[0] }" />
-          <p class="mt-1 text-xs text-muted">Attach your signed letter of intent in PDF or Word format â€” it is the most important part of your application.</p>
+          <p class="mt-1 text-xs text-muted">Attach your signed letter of intent in PDF or Word format — it is the most important part of your application.</p>
           <p v-if="letterFile" class="mt-1 flex items-center gap-1.5 text-xs font-medium text-primary"><UIcon name="i-lucide-file-text" class="size-3.5" />{{ letterFile.name }}</p>
         </UFormField>
 

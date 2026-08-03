@@ -46,7 +46,7 @@ const tenantOf = (property: PropertySpace) => {
 }
 
 const formatCurrency = (amount?: number | string) => amount == null || amount === ''
-  ? 'â€”'
+  ? '—'
   : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(Number(amount))
 
 const formOpen = ref(false)
@@ -168,11 +168,11 @@ const remove = async (property: PropertySpace) => {
         <dl class="space-y-3 text-sm">
           <div class="flex items-center justify-between">
             <dt class="text-xs text-muted">Location</dt>
-            <dd class="font-medium text-highlighted">{{ property.building }}<span v-if="property.floor"> Â· {{ property.floor }}</span></dd>
+            <dd class="font-medium text-highlighted">{{ property.building }}<span v-if="property.floor"> · {{ property.floor }}</span></dd>
           </div>
           <div class="flex items-center justify-between">
             <dt class="text-xs text-muted">Area</dt>
-            <dd class="font-medium text-highlighted">{{ property.area != null ? `${property.area} sqm` : 'â€”' }}</dd>
+            <dd class="font-medium text-highlighted">{{ property.area != null ? `${property.area} sqm` : '—' }}</dd>
           </div>
           <div class="flex items-center justify-between">
             <dt class="text-xs text-muted">Monthly rent</dt>

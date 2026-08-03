@@ -156,7 +156,7 @@ const formatDate = (value?: string) => value
           </UFormField>
 
           <UFormField label="Description" name="description" required>
-            <UTextarea v-model="description" placeholder="Describe the issue and where in the space it isâ€¦" :rows="4" :disabled="submitting" />
+            <UTextarea v-model="description" placeholder="Describe the issue and where in the space it is…" :rows="4" :disabled="submitting" />
           </UFormField>
 
           <UAlert v-if="errorMessage" color="error" icon="i-lucide-circle-alert" :description="errorMessage" />

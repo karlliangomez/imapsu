@@ -147,7 +147,7 @@ const formatDate = (value?: string) => value
                 variant="ghost"
                 square
                 :icon="star <= rating ? 'i-lucide-star' : 'i-lucide-star-outline'"
-                :class="star <= rating ? 'text-secondary' : 'text-muted'"
+                :class="star <= rating ? 'text-secondary' : 'text-toned'"
                 :aria-label="`Rate ${star} star${star > 1 ? 's' : ''}`"
                 :disabled="submitting"
                 @click="rating = star"
@@ -156,7 +156,7 @@ const formatDate = (value?: string) => value
           </UFormField>
 
           <UFormField label="Comment" name="comment">
-            <UTextarea v-model="comment" placeholder="Tell us about your experienceâ€¦" :rows="4" :disabled="submitting" />
+            <UTextarea v-model="comment" placeholder="Tell us about your experience…" :rows="4" :disabled="submitting" />
           </UFormField>
 
           <UAlert v-if="errorMessage" color="error" icon="i-lucide-circle-alert" :description="errorMessage" />
@@ -183,7 +183,7 @@ const formatDate = (value?: string) => value
                   :key="star"
                   :name="star <= item.rating ? 'i-lucide-star' : 'i-lucide-star-outline'"
                   class="size-4"
-                  :class="star <= item.rating ? 'text-secondary' : 'text-muted'"
+                  :class="star <= item.rating ? 'text-secondary' : 'text-toned'"
                 />
               </div>
               <p class="text-xs text-muted">{{ formatDate(item.createdAt) }}</p>
@@ -195,7 +195,7 @@ const formatDate = (value?: string) => value
                 {{ item.propertySpace.name }}
                 <span class="font-mono">({{ item.propertySpace.propertyCode }})</span>
               </span>
-              <span v-if="item.tenantName">Â· Tenant: {{ item.tenantName }}</span>
+              <span v-if="item.tenantName">· Tenant: {{ item.tenantName }}</span>
             </p>
           </UCard>
         </div>

@@ -90,7 +90,7 @@ const formatArea = (area?: number | string) => area == null || area === '' ? 'No
         <dl class="space-y-4 text-sm">
           <div>
             <dt class="mb-1 flex items-center gap-1.5 text-xs text-muted"><UIcon name="i-lucide-map-pin" /> Location</dt>
-            <dd class="font-medium text-highlighted">{{ property.building }}<span v-if="property.floor"> Â· {{ property.floor }}</span></dd>
+            <dd class="font-medium text-highlighted">{{ property.building }}<span v-if="property.floor"> · {{ property.floor }}</span></dd>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div><dt class="mb-1 text-xs text-muted">Area</dt><dd class="font-medium text-highlighted">{{ formatArea(property.area) }}</dd></div>

@@ -121,7 +121,7 @@ const greeting = computed(() => {
 const today = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
 const formatCurrency = (amount?: number | string) => amount == null || amount === ''
-  ? 'â€”'
+  ? '—'
   : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(Number(amount))
 
 const formatDate = (value?: string) => value
@@ -212,7 +212,7 @@ const audienceColor = (audience?: string) => {
             <NuxtLink to="/admin/bills" class="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-primary/5">
               <div class="min-w-0">
                 <p class="truncate text-sm font-medium text-highlighted">{{ bill.period || 'Billing period' }}</p>
-                <p class="truncate text-xs text-muted">{{ bill.tenancy?.propertySpace?.name ?? bill.tenancy?.user?.username ?? 'â€”' }}</p>
+                <p class="truncate text-xs text-muted">{{ bill.tenancy?.propertySpace?.name ?? bill.tenancy?.user?.username ?? '—' }}</p>
               </div>
               <div class="flex shrink-0 items-center gap-2">
                 <UBadge v-if="isOverdue(bill)" color="error" variant="solid">Overdue</UBadge>

@@ -126,7 +126,7 @@ const formatDate = (value?: string) => value
             />
           </UFormField>
           <UFormField label="Search">
-            <UInput v-model="filterSearch" placeholder="Student, tenant, space, commentâ€¦" icon="i-lucide-search" />
+            <UInput v-model="filterSearch" placeholder="Student, tenant, space, comment…" icon="i-lucide-search" />
           </UFormField>
           <div class="flex items-end justify-end">
             <UButton v-if="filterCount > 0" label="Clear filters" icon="i-lucide-x" color="neutral" variant="ghost" size="sm" @click="clearFilters" />
@@ -168,7 +168,7 @@ const formatDate = (value?: string) => value
                 <UIcon name="i-lucide-graduation-cap" class="size-3.5" />
                 {{ item.author?.username ?? item.author?.email ?? 'Unknown student' }}
               </span>
-              <span>Â· {{ formatDate(item.createdAt) }}</span>
+              <span>· {{ formatDate(item.createdAt) }}</span>
             </p>
           </div>
         </UCard>

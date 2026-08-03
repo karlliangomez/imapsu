@@ -168,7 +168,7 @@ const removeReceipt = async (bill: Bill) => {
 }
 
 const formatCurrency = (amount?: number | string) => amount == null || amount === ''
-  ? 'â€”'
+  ? '—'
   : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(Number(amount))
 
 const formatDate = (value?: string) => value
@@ -194,7 +194,7 @@ const isOverdue = (bill: Bill) => {
       <div>
         <p class="imapsu-page-eyebrow mb-2">Current tenant</p>
         <h1 class="imapsu-page-heading">Bills</h1>
-        <p class="mt-2 max-w-xl text-muted">Attach your payment receipt â€” the OR number is detected automatically â€” then review it and submit to mark the bill as paid.</p>
+        <p class="mt-2 max-w-xl text-muted">Attach your payment receipt — the OR number is detected automatically — then review it and submit to mark the bill as paid.</p>
       </div>
 
       <div v-if="status === 'success'" class="flex gap-3">
@@ -237,14 +237,14 @@ const isOverdue = (bill: Bill) => {
 
         <dl class="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
           <div><dt class="text-xs text-muted">Amount</dt><dd class="font-semibold text-highlighted">{{ formatCurrency(bill.amount) }}</dd></div>
-          <div><dt class="text-xs text-muted">Due date</dt><dd class="font-medium text-highlighted">{{ formatDate(bill.dueDate) || 'â€”' }}</dd></div>
+          <div><dt class="text-xs text-muted">Due date</dt><dd class="font-medium text-highlighted">{{ formatDate(bill.dueDate) || '—' }}</dd></div>
           <div v-if="bill.status === 'Paid'">
             <dt class="text-xs text-muted">Paid on</dt>
-            <dd class="font-medium text-highlighted">{{ formatDateTime(bill.paidAt) || 'â€”' }}</dd>
+            <dd class="font-medium text-highlighted">{{ formatDateTime(bill.paidAt) || '—' }}</dd>
           </div>
           <div v-if="bill.receipt">
             <dt class="text-xs text-muted">OR No.</dt>
-            <dd class="font-semibold font-mono text-highlighted">{{ bill.orNumber || 'â€”' }}</dd>
+            <dd class="font-semibold font-mono text-highlighted">{{ bill.orNumber || '—' }}</dd>
           </div>
           <div v-if="bill.receipt">
             <dt class="text-xs text-muted">Receipt</dt>
@@ -259,11 +259,11 @@ const isOverdue = (bill: Bill) => {
             <div class="flex flex-wrap items-center gap-3">
               <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-default px-3 py-2 text-sm font-medium text-primary hover:border-primary" :class="{ 'pointer-events-none opacity-60': isUploading(bill) }">
                 <UIcon :name="isUploading(bill) ? 'i-lucide-loader-2' : 'i-lucide-upload'" class="size-4" :class="{ 'animate-spin': isUploading(bill) }" />
-                {{ isUploading(bill) ? 'Uploadingâ€¦' : 'Choose receipt' }}
+                {{ isUploading(bill) ? 'Uploading…' : 'Choose receipt' }}
                 <input type="file" accept="image/*,.pdf" class="sr-only" :disabled="isUploading(bill)" @change="(event: Event) => onReceiptSelected(bill, event)" />
               </label>
               <span v-if="selectedFiles[billKey(bill)]" class="max-w-64 truncate text-sm text-muted">{{ selectedFiles[billKey(bill)].name }}</span>
-              <span v-else-if="isUploading(bill)" class="text-sm text-muted">Reading OR number from the receiptâ€¦</span>
+              <span v-else-if="isUploading(bill)" class="text-sm text-muted">Reading OR number from the receipt…</span>
             </div>
             <p v-if="uploadError" class="mt-2 text-xs text-error">{{ uploadError }}</p>
           </template>

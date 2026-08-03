@@ -59,7 +59,7 @@ const tickets = computed(() => data.value?.data ?? [])
 const tenancyOptions = computed(() => (tenancyData.value?.data ?? [])
   .filter(tenancy => tenancy.status === 'Active' && tenancy.user && tenancy.propertySpace)
   .map(tenancy => ({
-    label: `${tenancy.user!.username} â€” ${tenancy.propertySpace!.name} (${tenancy.propertySpace!.propertyCode})`,
+    label: `${tenancy.user!.username} — ${tenancy.propertySpace!.name} (${tenancy.propertySpace!.propertyCode})`,
     value: tenancy.documentId!
   })))
 
@@ -233,7 +233,7 @@ const save = async () => {
 }
 
 const remove = async (ticket: MaintenanceTicket) => {
-  const label = `${ticket.reporter?.username ?? 'Unknown'} â€” ${ticket.category}`
+  const label = `${ticket.reporter?.username ?? 'Unknown'} — ${ticket.category}`
   if (!confirm(`Delete this ticket (${label})? This cannot be undone.`)) return
   try {
     await $api(`/api/maintenance-tickets/${ticket.documentId ?? ticket.id}`, { method: 'DELETE' })
@@ -291,7 +291,7 @@ const remove = async (ticket: MaintenanceTicket) => {
             <USelect v-model="filterStatus" :items="[{ label: 'All statuses', value: 'All' }, ...STATUSES.map(s => ({ label: s, value: s }))]" />
           </UFormField>
           <UFormField label="Search">
-            <UInput v-model="filterSearch" placeholder="Tenant, space, category, descriptionâ€¦" icon="i-lucide-search" />
+            <UInput v-model="filterSearch" placeholder="Tenant, space, category, description…" icon="i-lucide-search" />
           </UFormField>
           <div class="flex items-end justify-end">
             <UButton v-if="filterCount > 0" label="Clear filters" icon="i-lucide-x" color="neutral" variant="ghost" size="sm" @click="clearFilters" />
@@ -308,7 +308,7 @@ const remove = async (ticket: MaintenanceTicket) => {
                 <UIcon :name="categoryIcon(item.category)" class="size-4" />
               </span>
               <div class="min-w-0">
-                <p class="font-medium text-highlighted">{{ item.category }} â€” {{ item.status }}</p>
+                <p class="font-medium text-highlighted">{{ item.category }} — {{ item.status }}</p>
                 <p class="mt-0.5 text-xs text-muted">Reported {{ formatDateTime(item.createdAt) }}</p>
               </div>
             </div>
@@ -356,7 +356,7 @@ const remove = async (ticket: MaintenanceTicket) => {
         </UFormField>
 
         <UFormField label="Description" required>
-          <UTextarea v-model="form.description" placeholder="Describe the issue and where in the space it isâ€¦" :rows="4" :disabled="saving" />
+          <UTextarea v-model="form.description" placeholder="Describe the issue and where in the space it is…" :rows="4" :disabled="saving" />
         </UFormField>
 
         <UFormField label="Status">

@@ -47,7 +47,7 @@ const users = computed(() => data.value ?? [])
 
 const isSelf = (user: DirectoryUser) => user.id === auth.user.value?.id
 
-const roleLabel = (type?: string) => ROLE_OPTIONS.find(option => option.value === type)?.label ?? type ?? 'â€”'
+const roleLabel = (type?: string) => ROLE_OPTIONS.find(option => option.value === type)?.label ?? type ?? '—'
 
 const roleColor = (type?: string) => {
   switch (type) {

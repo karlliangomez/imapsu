@@ -67,7 +67,7 @@ const formatDate = (value?: string) => value
   : ''
 
 const formatCurrency = (amount?: number | string) => amount == null || amount === ''
-  ? 'â€”'
+  ? '—'
   : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(Number(amount))
 
 const formOpen = ref(false)
@@ -245,7 +245,7 @@ const remove = async (tenancy: Tenancy) => {
 
         <dl class="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div><dt class="text-xs text-muted">Start date</dt><dd class="font-medium text-highlighted">{{ formatDate(tenancy.startDate) }}</dd></div>
-          <div><dt class="text-xs text-muted">End date</dt><dd class="font-medium text-highlighted">{{ formatDate(tenancy.endDate) || 'â€”' }}</dd></div>
+          <div><dt class="text-xs text-muted">End date</dt><dd class="font-medium text-highlighted">{{ formatDate(tenancy.endDate) || '—' }}</dd></div>
           <div><dt class="text-xs text-muted">Monthly rent</dt><dd class="font-medium text-highlighted">{{ formatCurrency(tenancy.monthlyRent) }}</dd></div>
         </dl>
 

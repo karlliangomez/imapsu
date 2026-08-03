@@ -157,6 +157,75 @@ export default {
     });
   },
 
+  // Self-service: a signed-in user updates their own profile (username, email)
+  // and/or password. The JWT stays valid, so the frontend re-fetches `/auth/me`.
+  async updateAccount(ctx: any) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized();
+    }
+
+    const userService = strapi.plugin('users-permissions').service('user');
+    const existing = await userService.fetchAuthenticatedUser(authUser.id);
+    if (!existing) {
+      return ctx.unauthorized();
+    }
+
+    const body: Record<string, unknown> = ctx.request.body ?? {};
+    const patch: Record<string, unknown> = {};
+
+    if (body.username !== undefined) {
+      const username = String(body.username).trim();
+      if (username.length < 3) {
+        throw new ValidationError('Username must be at least 3 characters long');
+      }
+      if (username !== existing.username) {
+        const clash = await userService.count({ username });
+        if (clash > 0) {
+          throw new ApplicationError('Username is already taken');
+        }
+      }
+      patch.username = username;
+    }
+
+    if (body.email !== undefined) {
+      const email = String(body.email).trim().toLowerCase();
+      if (!email.includes('@') || email.length < 5) {
+        throw new ValidationError('Please provide a valid email address');
+      }
+      if (email !== existing.email) {
+        const clash = await userService.count({ email });
+        if (clash > 0) {
+          throw new ApplicationError('Email is already taken');
+        }
+      }
+      patch.email = email;
+    }
+
+    const hasCurrent = body.currentPassword !== undefined;
+    const hasNew = body.newPassword !== undefined;
+    if (hasCurrent || hasNew) {
+      if (!hasCurrent || !hasNew) {
+        throw new ValidationError('Both your current password and a new password are required to change it');
+      }
+      if (String(body.newPassword).length < 6) {
+        throw new ValidationError('New password must be at least 6 characters long');
+      }
+      const valid = await userService.validatePassword(String(body.currentPassword), existing.password);
+      if (!valid) {
+        throw new ValidationError('Current password is incorrect');
+      }
+      patch.password = String(body.newPassword);
+    }
+
+    if (Object.keys(patch).length === 0) {
+      throw new ValidationError('Nothing to update');
+    }
+
+    const updated = await userService.edit(authUser.id, patch);
+    ctx.body = await sanitizeUser(updated);
+  },
+
   // Staff-only directory: users together with their role type. The standard
   // `/api/users` endpoint strips the role relation, which the admin UI needs.
   async userDirectory(ctx: any) {

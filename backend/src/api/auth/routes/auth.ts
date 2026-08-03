@@ -33,6 +33,16 @@ export default {
       },
     },
     {
+      method: 'PUT',
+      path: '/auth/account',
+      handler: 'api::auth.auth.updateAccount',
+      config: {
+        auth: {
+          scope: [],
+        },
+      },
+    },
+    {
       method: 'GET',
       path: '/user-directory',
       handler: 'api::auth.auth.userDirectory',
