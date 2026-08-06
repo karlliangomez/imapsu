@@ -1,0 +1,25 @@
+{
+  "kind": "collectionType",
+  "collectionName": "map_labels",
+  "info": {
+    "singularName": "map-label",
+    "pluralName": "map-labels",
+    "displayName": "Map Label",
+    "description": "A custom display name for a building on the 3D campus map, keyed to the building's identity in the GLB model."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "buildingKey": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "label": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

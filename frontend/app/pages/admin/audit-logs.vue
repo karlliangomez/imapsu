@@ -31,16 +31,20 @@ const ACTIONS = [
   'account-activated',
   'account-deactivated',
   'account-deleted',
+  'password-reset',
   'role-changed',
   'permissions-updated',
+  'settings-updated',
+  'backup-created',
+  'backup-restored',
+  'backup-deleted',
   'login-success',
   'login-failed',
   'system-error'
 ]
 
 const auth = useAuth()
-const toast = useToast()
-const { baseURL, $api, getErrorMessage } = useStrapi()
+const { baseURL } = useStrapi()
 const headers = { Authorization: `Bearer ${auth.token.value}` }
 
 const { data, status, error, refresh } = await useFetch<AuditListResponse>('/api/audit-logs', {
@@ -68,37 +72,6 @@ const filtered = computed(() => {
   })
 })
 
-const clearing = ref(false)
-const deleting = ref<number | null>(null)
-
-const removeEntry = async (entry: AuditEntry) => {
-  if (!confirm(`Delete this audit entry (${entry.action})?`)) return
-  deleting.value = entry.id
-  try {
-    await $api(`/api/audit-logs/${entry.id}`, { method: 'DELETE' })
-    toast.add({ title: 'Entry deleted', color: 'success', icon: 'i-lucide-check-circle' })
-    await refresh()
-  } catch (err) {
-    toast.add({ title: 'Could not delete entry', description: getErrorMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
-  } finally {
-    deleting.value = null
-  }
-}
-
-const clearAll = async () => {
-  if (!confirm(`Delete all ${total.value} audit entries? This cannot be undone.`)) return
-  clearing.value = true
-  try {
-    await $api('/api/audit-logs', { method: 'DELETE' })
-    toast.add({ title: 'Audit log cleared', color: 'success', icon: 'i-lucide-check-circle' })
-    await refresh()
-  } catch (err) {
-    toast.add({ title: 'Could not clear the audit log', description: getErrorMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
-  } finally {
-    clearing.value = false
-  }
-}
-
 const actionColor = (action: string) => {
   if (action === 'system-error' || action === 'login-failed') return 'error'
   if (action === 'login-success' || action === 'account-activated') return 'success'
@@ -120,12 +93,11 @@ const formatDate = (value?: string) => value
         <p class="imapsu-page-eyebrow mb-2">Administration</p>
         <h1 class="imapsu-page-heading">Audit logs</h1>
         <p class="mt-2 max-w-xl text-muted">
-          A record of administrative actions, account changes, sign-ins and server errors. Entries are written server-side and cannot be edited.
+          A record of administrative actions, account changes, sign-ins and server errors. Entries are written server-side and cannot be edited or deleted.
         </p>
       </div>
       <div class="flex items-center gap-2">
         <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
-        <UButton label="Clear log" icon="i-lucide-trash-2" color="error" variant="ghost" :loading="clearing" @click="clearAll" />
       </div>
     </div>
 
@@ -164,16 +136,6 @@ const formatDate = (value?: string) => value
             <p class="text-xs text-muted">{{ entry.actorRole || '—' }}</p>
           </div>
           <span class="hidden shrink-0 text-xs text-muted md:block">{{ formatDate(entry.createdAt) }}</span>
-          <UButton
-            square
-            color="error"
-            variant="ghost"
-            icon="i-lucide-trash-2"
-            size="sm"
-            :loading="deleting === entry.id"
-            :aria-label="'Delete entry'"
-            @click="removeEntry(entry)"
-          />
         </li>
       </ul>
     </UCard>

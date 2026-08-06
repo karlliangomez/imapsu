@@ -60,8 +60,14 @@
       "default": "Unpaid",
       "enum": [
         "Unpaid",
-        "Paid"
+        "For Verification",
+        "Verified",
+        "Rejected",
+        "Overdue"
       ]
+    },
+    "verificationNote": {
+      "type": "text"
     },
     "paidAt": {
       "type": "datetime"

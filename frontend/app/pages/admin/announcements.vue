@@ -16,6 +16,14 @@ type Announcement = {
 
 type ListResponse<T> = { data: T[] }
 
+type Acknowledgment = {
+  id: number | string
+  documentId?: string
+  acknowledgedAt?: string
+  user?: { username?: string } | null
+  announcement?: { documentId?: string } | null
+}
+
 useHead({ title: 'Announcements | iMapSU' })
 
 const auth = useAuth()
@@ -29,7 +37,42 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Announcemen
   query: { sort: 'publishedAt:desc', 'pagination[pageSize]': 100 }
 })
 
+const { data: ackData, refresh: refreshAcks } = await useFetch<ListResponse<Acknowledgment>>('/api/announcement-acknowledgments', {
+  baseURL,
+  headers,
+  query: { 'populate[announcement]': true, 'populate[user]': true, 'pagination[pageSize]': 500 }
+})
+
 const announcements = computed(() => data.value?.data ?? [])
+const acknowledgments = computed(() => ackData.value?.data ?? [])
+
+const ackCounts = computed(() => {
+  const counts: Record<string, number> = {}
+  for (const ack of acknowledgments.value) {
+    const key = ack.announcement?.documentId
+    if (key) counts[key] = (counts[key] ?? 0) + 1
+  }
+  return counts
+})
+
+const ackFor = (item: Announcement) => {
+  const key = String(item.documentId ?? item.id)
+  return acknowledgments.value.filter(ack => ack.announcement?.documentId === key)
+}
+
+const ackCountFor = (item: Announcement) => ackCounts.value[String(item.documentId ?? item.id)] ?? 0
+
+const refreshAll = async () => {
+  await Promise.all([refresh(), refreshAcks()])
+}
+
+const ackModalOpen = ref(false)
+const ackTarget = ref<Announcement | null>(null)
+
+const ackOpenFor = (item: Announcement) => {
+  ackTarget.value = item
+  ackModalOpen.value = true
+}
 
 const formOpen = ref(false)
 const editing = ref<Announcement | null>(null)
@@ -117,7 +160,7 @@ const audienceColor = (audience: Announcement['audience']) => {
         <p class="mt-2 max-w-xl text-muted">Publish announcements for students, tenants, or everyone.</p>
       </div>
       <div class="flex items-center gap-2">
-        <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
+        <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refreshAll" />
         <UButton label="New announcement" icon="i-lucide-plus" @click="openCreate" />
       </div>
     </div>
@@ -144,8 +187,33 @@ const audienceColor = (audience: Announcement['audience']) => {
           </div>
         </div>
         <p class="mt-3 whitespace-pre-line text-sm leading-relaxed text-toned">{{ item.body }}</p>
+
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
+          <p class="flex items-center gap-1.5 text-xs text-muted">
+            <UIcon name="i-lucide-badge-check" class="size-4 text-success-500" />
+            {{ ackCountFor(item) }} acknowledgment{{ ackCountFor(item) === 1 ? '' : 's' }}
+          </p>
+          <UButton v-if="ackFor(item).length" size="xs" color="neutral" variant="subtle" icon="i-lucide-users" @click="ackOpenFor(item)">
+            View acknowledgments
+          </UButton>
+        </div>
       </UCard>
     </div>
+
+    <UModal v-model:open="ackModalOpen" :title="ackTarget ? `Acknowledged by ${ackCountFor(ackTarget)}` : 'Acknowledgments'" description="Users who have acknowledged this announcement.">
+      <template #body>
+        <ul v-if="ackTarget && ackFor(ackTarget).length" class="divide-y divide-default">
+          <li v-for="ack in ackFor(ackTarget)" :key="ack.documentId ?? ack.id" class="flex items-center justify-between gap-3 py-2.5">
+            <span class="flex items-center gap-2 text-sm font-medium text-highlighted">
+              <UIcon name="i-lucide-user" class="size-4 text-muted" />
+              {{ ack.user?.username ?? 'Unknown user' }}
+            </span>
+            <span class="text-xs text-muted">{{ formatDate(ack.acknowledgedAt) }}</span>
+          </li>
+        </ul>
+        <p v-else class="text-sm text-muted">No acknowledgments recorded yet.</p>
+      </template>
+    </UModal>
 
     <UModal v-model:open="formOpen" :title="editing ? 'Edit announcement' : 'New announcement'" description="Publish an announcement to your chosen audience.">
       <template #body>

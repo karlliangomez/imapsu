@@ -83,7 +83,37 @@ const PERMISSION_CATALOG = [
       'api::maintenance-ticket.maintenance-ticket.findOne',
       'api::maintenance-ticket.maintenance-ticket.create',
       'api::maintenance-ticket.maintenance-ticket.update',
-      'api::maintenance-ticket.maintenance-ticket.delete'
+      'api::maintenance-ticket.maintenance-ticket.delete',
+      'api::maintenance-ticket.maintenance-ticket.followUp'
+    ]
+  },
+  {
+    label: 'Notifications',
+    actions: [
+      'api::notification.notification.find',
+      'api::notification.notification.unreadCount',
+      'api::notification.notification.markRead',
+      'api::notification.notification.markAllRead'
+    ]
+  },
+  {
+    label: 'Meter readings',
+    actions: [
+      'api::meter-reading.meter-reading.find',
+      'api::meter-reading.meter-reading.findOne',
+      'api::meter-reading.meter-reading.create',
+      'api::meter-reading.meter-reading.update',
+      'api::meter-reading.meter-reading.delete'
+    ]
+  },
+  {
+    label: 'Announcement acknowledgments',
+    actions: [
+      'api::announcement-acknowledgment.announcement-acknowledgment.find',
+      'api::announcement-acknowledgment.announcement-acknowledgment.findOne',
+      'api::announcement-acknowledgment.announcement-acknowledgment.create',
+      'api::announcement-acknowledgment.announcement-acknowledgment.update',
+      'api::announcement-acknowledgment.announcement-acknowledgment.delete'
     ]
   },
   {
@@ -91,7 +121,18 @@ const PERMISSION_CATALOG = [
     actions: [
       'api::feedback.feedback.find',
       'api::feedback.feedback.findOne',
-      'api::feedback.feedback.create'
+      'api::feedback.feedback.create',
+      'api::feedback.feedback.update'
+    ]
+  },
+  {
+    label: 'Campus map',
+    actions: [
+      'api::map-zone.map-zone.find',
+      'api::map-zone.map-zone.findOne',
+      'api::map-zone.map-zone.create',
+      'api::map-zone.map-zone.update',
+      'api::map-zone.map-zone.delete'
     ]
   },
   {
@@ -127,7 +168,14 @@ const selected = ref<Record<string, string[]>>({})
 const syncSelected = () => {
   const next: Record<string, string[]> = {}
   for (const role of roles.value) {
-    next[role.type] = role.permissions.filter(action => CATALOG_ACTIONS.has(action))
+    const base = role.permissions.filter(action => CATALOG_ACTIONS.has(action))
+    if (role.type === 'oas') {
+      const set = new Set(base)
+      for (const action of OAS_LOCKED_ACTIONS) set.add(action)
+      next[role.type] = [...set]
+    } else {
+      next[role.type] = base
+    }
   }
   selected.value = next
 }
@@ -141,7 +189,13 @@ const ADMIN_LOCKED_ACTIONS = new Set([
   'plugin::users-permissions.user.destroy'
 ])
 
-const isProtected = (role: RoleInfo, action: string) => PROTECTED_ACTIONS.has(action) || (role.type === 'admin' && ADMIN_LOCKED_ACTIONS.has(action))
+const OAS_LOCKED_ACTIONS = new Set(
+  [...CATALOG_ACTIONS].filter(action => action !== 'plugin::users-permissions.user.update' && action !== 'plugin::users-permissions.user.destroy')
+)
+
+const isProtected = (role: RoleInfo, action: string) => PROTECTED_ACTIONS.has(action)
+  || (role.type === 'admin' && ADMIN_LOCKED_ACTIONS.has(action))
+  || (role.type === 'oas' && OAS_LOCKED_ACTIONS.has(action))
 
 const isChecked = (roleType: string, action: string) => (selected.value[roleType] ?? []).includes(action)
 
@@ -187,6 +241,8 @@ const roleColor = (type: string) => {
       return 'success'
     case 'aspiring-tenant':
       return 'secondary'
+    case 'field-personnel':
+      return 'info'
     default:
       return 'neutral'
   }

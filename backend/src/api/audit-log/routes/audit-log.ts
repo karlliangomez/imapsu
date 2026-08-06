@@ -1,7 +1,9 @@
 /**
  * audit-log router
  *
- * Read/delete surface only; entries are created server-side.
+ * Read-only surface: audit entries are written server-side and are
+ * deliberately append-only — they cannot be edited or deleted through any
+ * user-facing function.
  */
 
 export default {
@@ -23,26 +25,6 @@ export default {
       config: {
         auth: {
           scope: ['api::audit-log.audit-log.findOne'],
-        },
-      },
-    },
-    {
-      method: 'DELETE',
-      path: '/audit-logs/:id',
-      handler: 'api::audit-log.audit-log.delete',
-      config: {
-        auth: {
-          scope: ['api::audit-log.audit-log.delete'],
-        },
-      },
-    },
-    {
-      method: 'DELETE',
-      path: '/audit-logs',
-      handler: 'api::audit-log.audit-log.deleteAll',
-      config: {
-        auth: {
-          scope: ['api::audit-log.audit-log.delete'],
         },
       },
     },

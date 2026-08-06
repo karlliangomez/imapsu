@@ -7,7 +7,7 @@ definePageMeta({
 type RentalApplication = {
   id: number | string
   documentId?: string
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'
+  status: 'Pending' | 'For Review' | 'For Recommendation' | 'Approved' | 'Declined' | 'Cancelled'
   message?: string
   createdAt?: string
   letterOfIntent?: { id: number; url?: string; name?: string } | null
@@ -120,10 +120,12 @@ const statusColor = (status: RentalApplication['status']) => {
   switch (status) {
     case 'Approved':
       return 'success'
-    case 'Rejected':
-      return 'error'
+    case 'Declined':
     case 'Cancelled':
-      return 'neutral'
+      return 'error'
+    case 'For Review':
+    case 'For Recommendation':
+      return 'info'
     default:
       return 'secondary'
   }

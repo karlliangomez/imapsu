@@ -21,13 +21,15 @@ const ENTITY_BY_SEGMENT: Record<string, string> = {
   'renewal-intents': 'api::renewal-intent.renewal-intent',
   'maintenance-tickets': 'api::maintenance-ticket.maintenance-ticket',
   feedbacks: 'api::feedback.feedback',
+  'meter-readings': 'api::meter-reading.meter-reading',
+  'announcement-acknowledgments': 'api::announcement-acknowledgment.announcement-acknowledgment',
 };
 
 function extractLabel(data: Record<string, unknown> | undefined): string | null {
   if (!data) {
     return null;
   }
-  for (const key of ['title', 'name', 'subject', 'period', 'propertyName', 'propertyCode', 'tenantName']) {
+  for (const key of ['title', 'name', 'subject', 'period', 'propertyName', 'propertyCode', 'tenantName', 'readingDate']) {
     const value = data[key];
     if (typeof value === 'string' && value.trim()) {
       return value;

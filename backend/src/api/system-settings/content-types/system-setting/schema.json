@@ -1,0 +1,107 @@
+{
+  "kind": "singleType",
+  "collectionName": "system_settings",
+  "info": {
+    "singularName": "system-setting",
+    "pluralName": "system-settings",
+    "displayName": "System Settings"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "systemName": {
+      "type": "string",
+      "default": "iMapSU"
+    },
+    "systemStatus": {
+      "type": "enumeration",
+      "enum": ["operational", "degraded", "maintenance"],
+      "default": "operational"
+    },
+    "maintenanceBanner": {
+      "type": "text"
+    },
+    "passwordMinLength": {
+      "type": "integer",
+      "default": 8,
+      "min": 4,
+      "max": 32
+    },
+    "passwordRequireUppercase": {
+      "type": "boolean",
+      "default": true
+    },
+    "passwordRequireNumber": {
+      "type": "boolean",
+      "default": true
+    },
+    "passwordRequireSymbol": {
+      "type": "boolean",
+      "default": false
+    },
+    "passwordMaxAgeDays": {
+      "type": "integer",
+      "default": null,
+      "min": 0
+    },
+    "accountLockoutThreshold": {
+      "type": "integer",
+      "default": 5,
+      "min": 0
+    },
+    "accountLockoutWindowMinutes": {
+      "type": "integer",
+      "default": 10,
+      "min": 1
+    },
+    "accountLockoutDurationMinutes": {
+      "type": "integer",
+      "default": 30,
+      "min": 1
+    },
+    "uploadMaxFileMb": {
+      "type": "integer",
+      "default": 10,
+      "min": 1,
+      "max": 100
+    },
+    "uploadAllowedTypes": {
+      "type": "json"
+    },
+    "notificationEmailEnabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "notifyOnApplication": {
+      "type": "boolean",
+      "default": true
+    },
+    "notifyOnTicket": {
+      "type": "boolean",
+      "default": true
+    },
+    "notifyOnReceipt": {
+      "type": "boolean",
+      "default": true
+    },
+    "notifyOnFollowUp": {
+      "type": "boolean",
+      "default": true
+    },
+    "backupsEnabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "backupScheduleCron": {
+      "type": "string",
+      "default": "0 2 * * *"
+    },
+    "backupRetentionDays": {
+      "type": "integer",
+      "default": 7,
+      "min": 1
+    }
+  }
+}

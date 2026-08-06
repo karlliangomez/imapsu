@@ -2,13 +2,16 @@
  * system controller
  *
  * Admin-only health/monitoring surface: uptime, memory, disk usage,
- * database connectivity, failed sign-in stats and recorded server errors.
+ * database connectivity, failed sign-in stats and recorded server errors —
+ * plus database backup and recovery.
  */
 
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { isAdmin } from '../../../utils/access';
+import { createBackup, listBackups, deleteBackup, restoreBackup, readRequestBody, ensureBackupsDirSync } from '../../../utils/backup';
+import { getSettings } from '../../system-settings/services/system-setting';
 
 const AUDIT_UID = 'api::audit-log.audit-log';
 
@@ -98,6 +101,99 @@ export default {
       },
       errors: { total: errorTotal, recent: recentErrors },
       now: now.toISOString(),
+    };
+  },
+
+  // Admin-only: create an on-demand database backup.
+  async backup(ctx: any) {
+    const user = ctx.state.user as { id?: number } | undefined;
+    if (!user) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(user)) {
+      return ctx.forbidden('Only administrators can create backups');
+    }
+
+    const started = Date.now();
+    try {
+      const backup = await createBackup(strapi, user);
+      ctx.body = { ok: true, backup, elapsedMs: Date.now() - started };
+    } catch (err) {
+      ctx.badRequest(`Backup failed: ${(err as Error).message}`);
+    }
+  },
+
+  // Admin-only: list existing database backups.
+  async backupList(ctx: any) {
+    const user = ctx.state.user as { id?: number } | undefined;
+    if (!user) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(user)) {
+      return ctx.forbidden('Only administrators can list backups');
+    }
+
+    ctx.body = { backups: await listBackups(strapi) };
+  },
+
+  // Admin-only: restore the database from an uploaded dump file. The raw
+  // binary body is streamed to a temporary file and applied with pg_restore.
+  async restoreBackup(ctx: any) {
+    const user = ctx.state.user as { id?: number } | undefined;
+    if (!user) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(user)) {
+      return ctx.forbidden('Only administrators can restore backups');
+    }
+
+    try {
+      const buffer = await readRequestBody(ctx.req);
+      if (buffer.length === 0) {
+        return ctx.badRequest('No backup file provided');
+      }
+      const result = await restoreBackup(strapi, buffer, user);
+      ctx.body = { ok: true, ...result };
+    } catch (err) {
+      ctx.badRequest(`Restore failed: ${(err as Error).message}`);
+    }
+  },
+
+  // Admin-only: delete a stored database backup file.
+  async deleteBackup(ctx: any) {
+    const user = ctx.state.user as { id?: number } | undefined;
+    if (!user) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(user)) {
+      return ctx.forbidden('Only administrators can delete backups');
+    }
+
+    const name = String(ctx.params.name ?? '');
+    try {
+      const result = await deleteBackup(strapi, name, user);
+      ctx.body = { ok: true, ...result };
+    } catch (err) {
+      ctx.badRequest(`Could not delete backup: ${(err as Error).message}`);
+    }
+  },
+
+  // Admin-only: retention info used by the backups page.
+  async backupSettings(ctx: any) {
+    const user = ctx.state.user as { id?: number } | undefined;
+    if (!user) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(user)) {
+      return ctx.forbidden('Only administrators can read backup settings');
+    }
+
+    const settings = await getSettings(strapi);
+    ctx.body = {
+      enabled: Boolean(settings.backupsEnabled),
+      scheduleCron: settings.backupScheduleCron ?? '0 2 * * *',
+      retentionDays: settings.backupRetentionDays ?? 7,
+      backupDir: ensureBackupsDirSync(strapi),
     };
   },
 };

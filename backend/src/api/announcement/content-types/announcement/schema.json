@@ -27,6 +27,12 @@
         "Students",
         "Tenants"
       ]
+    },
+    "acknowledgments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::announcement-acknowledgment.announcement-acknowledgment",
+      "mappedBy": "announcement"
     }
   }
 }

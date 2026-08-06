@@ -8,11 +8,15 @@
 
 import { factories } from '@strapi/strapi';
 import type { Core } from '@strapi/strapi';
-import { isStaff } from '../../../utils/access';
+import { isStaff, userRole } from '../../../utils/access';
 import { recordStatusChange } from '../../../utils/status-history';
 
 const UID = 'api::tenancy.tenancy';
 const PROPERTY_UID = 'api::property-space.property-space';
+
+// Field personnel must list tenancies (read-only) so they can record meter
+// readings against the correct tenancy; updates and creation stay staff-only.
+const canReadAll = (user: { id: number }) => isStaff(user) || userRole(user) === 'field-personnel';
 
 export default factories.createCoreController(UID, ({ strapi }) => {
   const base = (self: unknown) => self as unknown as Core.CoreAPI.Controller.Base;
@@ -29,7 +33,7 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       await ctrl.validateQuery(ctx);
       const query = await ctrl.sanitizeQuery(ctx);
 
-      const filters = isStaff(user)
+      const filters = canReadAll(user)
         ? (query.filters ?? {})
         : {
             ...(query.filters ?? {}),
@@ -52,7 +56,7 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       await ctrl.validateQuery(ctx);
       const query = await ctrl.sanitizeQuery(ctx);
 
-      const filters = isStaff(user)
+      const filters = canReadAll(user)
         ? (query.filters ?? {})
         : {
             ...(query.filters ?? {}),

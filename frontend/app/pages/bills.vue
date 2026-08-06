@@ -10,7 +10,8 @@ type Bill = {
   period?: string
   amount: number | string
   dueDate?: string
-  status: 'Unpaid' | 'Paid'
+  status: 'Unpaid' | 'For Verification' | 'Verified' | 'Rejected' | 'Overdue'
+  verificationNote?: string
   paidAt?: string
   orNumber?: string
   createdAt?: string
@@ -44,7 +45,7 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Bill>>('/ap
 const bills = computed(() => data.value?.data ?? [])
 const totalOutstanding = computed(() =>
   bills.value
-    .filter(bill => bill.status === 'Unpaid')
+    .filter(bill => bill.status !== 'Verified')
     .reduce((sum, bill) => sum + Number(bill.amount || 0), 0)
 )
 
@@ -131,7 +132,7 @@ const submitPayment = async (bill: Bill) => {
     })
     toast.add({
       title: 'Payment submitted',
-      description: 'The bill is now marked as paid and sent to management for review.',
+      description: 'The bill is now marked for verification by the Office of Auxiliary Services.',
       color: 'success',
       icon: 'i-lucide-check-circle'
     })
@@ -180,12 +181,33 @@ const formatDateTime = (value?: string) => value
   : ''
 
 const isOverdue = (bill: Bill) => {
-  if (bill.status === 'Paid' || !bill.dueDate) return false
+  if (bill.status === 'Verified' || !bill.dueDate) return false
+  if (bill.status === 'Overdue') return true
   const due = new Date(bill.dueDate + 'T00:00:00')
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   return due < today
 }
+
+const statusColor = (bill: Bill) => {
+  switch (bill.status) {
+    case 'Verified': return 'success'
+    case 'Rejected':
+    case 'Overdue': return 'error'
+    case 'For Verification': return 'warning'
+    default: return 'secondary'
+  }
+}
+
+const statusLabel = (bill: Bill) => {
+  switch (bill.status) {
+    case 'For Verification': return 'Awaiting verification'
+    case 'Rejected': return 'Payment rejected'
+    default: return bill.status
+  }
+}
+
+const canSubmitPayment = (bill: Bill) => bill.status !== 'Verified'
 </script>
 
 <template>
@@ -231,15 +253,15 @@ const isOverdue = (bill: Bill) => {
           </div>
           <div class="flex items-center gap-2">
             <UBadge v-if="isOverdue(bill)" color="error" variant="solid">Overdue</UBadge>
-            <UBadge :color="bill.status === 'Paid' ? 'success' : 'secondary'" variant="subtle">{{ bill.status }}</UBadge>
+            <UBadge :color="statusColor(bill)" variant="subtle">{{ statusLabel(bill) }}</UBadge>
           </div>
         </div>
 
         <dl class="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
           <div><dt class="text-xs text-muted">Amount</dt><dd class="font-semibold text-highlighted">{{ formatCurrency(bill.amount) }}</dd></div>
           <div><dt class="text-xs text-muted">Due date</dt><dd class="font-medium text-highlighted">{{ formatDate(bill.dueDate) || '—' }}</dd></div>
-          <div v-if="bill.status === 'Paid'">
-            <dt class="text-xs text-muted">Paid on</dt>
+          <div v-if="bill.status === 'Verified'">
+            <dt class="text-xs text-muted">Verified on</dt>
             <dd class="font-medium text-highlighted">{{ formatDateTime(bill.paidAt) || '—' }}</dd>
           </div>
           <div v-if="bill.receipt">
@@ -252,8 +274,12 @@ const isOverdue = (bill: Bill) => {
           </div>
         </dl>
 
-        <div v-if="bill.status === 'Unpaid'" class="mt-5 border-t border-default pt-4">
+        <div v-if="canSubmitPayment(bill)" class="mt-5 border-t border-default pt-4">
           <p class="mb-3 text-xs text-muted">Payment</p>
+
+          <UAlert v-if="bill.status === 'For Verification'" color="info" icon="i-lucide-clock" title="Awaiting verification" description="Your receipt has been submitted and is being reviewed by the Office of Auxiliary Services." class="mb-4" />
+          <UAlert v-else-if="bill.status === 'Rejected'" color="error" icon="i-lucide-x-circle" title="Payment rejected" :description="bill.verificationNote || 'Your submitted receipt was not accepted. Please review it and try again.'" class="mb-4" />
+          <UAlert v-else-if="bill.status === 'Overdue'" color="warning" icon="i-lucide-alarm-clock" title="Overdue" description="This bill is past its due date. Please settle it as soon as possible." class="mb-4" />
 
           <template v-if="!bill.receipt">
             <div class="flex flex-wrap items-center gap-3">

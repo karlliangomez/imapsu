@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notifications",
+  "info": {
+    "singularName": "notification",
+    "pluralName": "notifications",
+    "displayName": "Notification"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "application",
+        "ticket",
+        "receipt",
+        "follow-up",
+        "announcement"
+      ]
+    },
+    "recipient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "entityType": {
+      "type": "string"
+    },
+    "entityId": {
+      "type": "string"
+    },
+    "entityLabel": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false
+    },
+    "actorUsername": {
+      "type": "string"
+    }
+  }
+}

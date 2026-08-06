@@ -192,6 +192,7 @@ const userItems = computed(() => {
 
             <div class="flex items-center gap-2">
               <UButton color="neutral" variant="ghost" square :icon="isDark ? 'i-lucide-sun' : 'i-lucide-moon'" :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleColorMode" />
+              <NotificationBell />
               <template v-if="auth.isAuthenticated.value">
                 <UDropdownMenu :items="userItems">
                   <UButton color="neutral" variant="ghost" :label="auth.user.value?.username" trailing-icon="i-lucide-chevron-down" />

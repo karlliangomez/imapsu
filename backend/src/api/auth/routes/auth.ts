@@ -100,5 +100,35 @@ export default {
         },
       },
     },
+    {
+      method: 'POST',
+      path: '/auth/user/:id/reset-password',
+      handler: 'api::auth.auth.resetPasswordByStaff',
+      config: {
+        auth: {
+          scope: ['plugin::users-permissions.user.update'],
+        },
+      },
+    },
+    {
+      method: 'POST',
+      path: '/auth/user/:id/activate',
+      handler: 'api::auth.auth.activateUserByStaff',
+      config: {
+        auth: {
+          scope: ['plugin::users-permissions.user.update'],
+        },
+      },
+    },
+    {
+      method: 'POST',
+      path: '/auth/user/:id/deactivate',
+      handler: 'api::auth.auth.deactivateUserByStaff',
+      config: {
+        auth: {
+          scope: ['plugin::users-permissions.user.update'],
+        },
+      },
+    },
   ],
 };

@@ -25,6 +25,21 @@
     "tenantName": {
       "type": "string"
     },
+    "category": {
+      "type": "enumeration",
+      "default": "Other",
+      "enum": [
+        "Product",
+        "Service",
+        "Cleanliness",
+        "Environment",
+        "Staff",
+        "Other"
+      ]
+    },
+    "staffAction": {
+      "type": "text"
+    },
     "rating": {
       "type": "integer",
       "required": true,

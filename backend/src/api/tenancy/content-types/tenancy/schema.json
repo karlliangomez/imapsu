@@ -46,6 +46,12 @@
       "relation": "oneToMany",
       "target": "api::bill.bill",
       "mappedBy": "tenancy"
+    },
+    "meterReadings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::meter-reading.meter-reading",
+      "mappedBy": "tenancy"
     }
   }
 }

@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "meter_readings",
+  "info": {
+    "singularName": "meter-reading",
+    "pluralName": "meter-readings",
+    "displayName": "Meter Reading"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "tenancy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::tenancy.tenancy",
+      "inversedBy": "meterReadings"
+    },
+    "electricMeterReading": {
+      "type": "decimal"
+    },
+    "waterMeterReading": {
+      "type": "decimal"
+    },
+    "readingDate": {
+      "type": "date",
+      "required": true
+    },
+    "notes": {
+      "type": "text"
+    },
+    "recordedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

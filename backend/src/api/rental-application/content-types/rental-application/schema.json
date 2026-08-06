@@ -28,8 +28,10 @@
       "default": "Pending",
       "enum": [
         "Pending",
+        "For Review",
+        "For Recommendation",
         "Approved",
-        "Rejected",
+        "Declined",
         "Cancelled"
       ]
     },
@@ -39,6 +41,12 @@
     "letterOfIntent": {
       "type": "media",
       "multiple": false
+    },
+    "evaluation": {
+      "type": "text"
+    },
+    "recommendation": {
+      "type": "text"
     }
   }
 }

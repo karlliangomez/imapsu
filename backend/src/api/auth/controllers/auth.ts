@@ -5,6 +5,7 @@
 import { errors } from '@strapi/utils';
 import { isAdmin, isStaff } from '../../../utils/access';
 import { auditActor, recordAudit } from '../../../utils/audit-log';
+import { getSettings } from '../../system-settings/services/system-setting';
 
 const { ApplicationError, ValidationError } = errors;
 
@@ -24,8 +25,8 @@ const STAFF_CREATE_ROLES = ['student', 'aspiring-tenant', 'current-tenant'];
 const DEFAULT_STAFF_CREATE_ROLE = 'current-tenant';
 
 // Every role an administrator may create or assign. Administrators can also
-// provision OAS and administrator accounts.
-const ALL_ROLES = ['student', 'aspiring-tenant', 'current-tenant', 'oas', 'admin'];
+// provision OAS, field personnel and administrator accounts.
+const ALL_ROLES = ['student', 'aspiring-tenant', 'current-tenant', 'field-personnel', 'oas', 'admin'];
 
 // The roles an administrator may manage on the role & permissions page.
 // The built-in `public` and `authenticated` roles are intentionally excluded.
@@ -103,6 +104,16 @@ const PERMISSION_CATALOG = [
       'api::maintenance-ticket.maintenance-ticket.create',
       'api::maintenance-ticket.maintenance-ticket.update',
       'api::maintenance-ticket.maintenance-ticket.delete',
+      'api::maintenance-ticket.maintenance-ticket.followUp',
+    ],
+  },
+  {
+    label: 'Notifications',
+    actions: [
+      'api::notification.notification.find',
+      'api::notification.notification.unreadCount',
+      'api::notification.notification.markRead',
+      'api::notification.notification.markAllRead',
     ],
   },
   {
@@ -111,6 +122,37 @@ const PERMISSION_CATALOG = [
       'api::feedback.feedback.find',
       'api::feedback.feedback.findOne',
       'api::feedback.feedback.create',
+      'api::feedback.feedback.update',
+    ],
+  },
+  {
+    label: 'Meter readings',
+    actions: [
+      'api::meter-reading.meter-reading.find',
+      'api::meter-reading.meter-reading.findOne',
+      'api::meter-reading.meter-reading.create',
+      'api::meter-reading.meter-reading.update',
+      'api::meter-reading.meter-reading.delete',
+    ],
+  },
+  {
+    label: 'Announcement acknowledgments',
+    actions: [
+      'api::announcement-acknowledgment.announcement-acknowledgment.find',
+      'api::announcement-acknowledgment.announcement-acknowledgment.findOne',
+      'api::announcement-acknowledgment.announcement-acknowledgment.create',
+      'api::announcement-acknowledgment.announcement-acknowledgment.update',
+      'api::announcement-acknowledgment.announcement-acknowledgment.delete',
+    ],
+  },
+  {
+    label: 'Campus map',
+    actions: [
+      'api::map-zone.map-zone.find',
+      'api::map-zone.map-zone.findOne',
+      'api::map-zone.map-zone.create',
+      'api::map-zone.map-zone.update',
+      'api::map-zone.map-zone.delete',
     ],
   },
   {
@@ -136,30 +178,50 @@ const PROTECTED_ACTIONS = new Set([
   'api::auth.auth.updateAccount',
 ]);
 
+// Baseline actions the OAS workspace depends on. A save from the permissions
+// page can never strip these, so the OAS dashboard and entity pages keep
+// working. Everything in the catalog except user update/destroy (which stay
+// admin-only), plus status history read used by the shared history modals.
+const OAS_LOCKED_ACTIONS = new Set(
+  [...CATALOG_ACTIONS].filter(
+    (action) =>
+      action !== 'plugin::users-permissions.user.update' &&
+      action !== 'plugin::users-permissions.user.destroy',
+  ),
+);
+OAS_LOCKED_ACTIONS.add('api::status-history.status-history.find');
+
 async function sanitizeUser(user: unknown) {
   const schema = strapi.getModel(USER_MODEL_UID);
   return strapi.contentAPI.sanitize.output(user, schema, { auth: null });
 }
 
-// A password must combine character classes so that weak credentials are
-// rejected at registration and password change. Existing accounts are
-// unaffected: this only guards new passwords.
-function assertStrongPassword(password: string, label = 'Password') {
-  if (password.length < 6) {
-    throw new ValidationError(`${label} must be at least 6 characters long`);
+// Password policy is driven by the persisted system settings so an
+// administrator can adjust the requirements without code changes. Existing
+// accounts are unaffected: this only guards new and reset passwords.
+async function assertPasswordPolicy(password: string, label = 'Password') {
+  const settings = await getSettings(strapi);
+
+  const minLength = Math.max(4, Number(settings.passwordMinLength ?? 8));
+  const requireUpper = settings.passwordRequireUppercase !== false;
+  const requireNumber = settings.passwordRequireNumber !== false;
+  const requireSymbol = settings.passwordRequireSymbol === true;
+
+  if (password.length < minLength) {
+    throw new ValidationError(`${label} must be at least ${minLength} characters long`);
   }
-  if (!/[A-Z]/.test(password)) {
+  if (requireUpper && !/[A-Z]/.test(password)) {
     throw new ValidationError(`${label} must contain at least one uppercase letter`);
   }
-  if (!/[a-z]/.test(password)) {
-    throw new ValidationError(`${label} must contain at least one lowercase letter`);
+  if (requireNumber && !/[0-9]/.test(password)) {
+    throw new ValidationError(`${label} must contain at least one number`);
   }
-  if (!/[^A-Za-z0-9]/.test(password)) {
+  if (requireSymbol && !/[^A-Za-z0-9]/.test(password)) {
     throw new ValidationError(`${label} must contain at least one symbol (e.g. ! @ # $)`);
   }
 }
 
-function validateRegisterBody(body: Record<string, unknown>) {
+async function validateRegisterBody(body: Record<string, unknown>) {
   const { username, email, password } = body;
 
   if (typeof username !== 'string' || username.trim().length < 3) {
@@ -174,7 +236,7 @@ function validateRegisterBody(body: Record<string, unknown>) {
     throw new ValidationError('Please provide a password');
   }
 
-  assertStrongPassword(password);
+  await assertPasswordPolicy(password);
 }
 
 export default {
@@ -230,7 +292,7 @@ export default {
   async registerWithRole(ctx: any) {
     const body: Record<string, unknown> = ctx.request.body ?? {};
 
-    validateRegisterBody(body);
+    await validateRegisterBody(body);
 
     const email = String(body.email).trim().toLowerCase();
     const username = String(body.username).trim();
@@ -284,7 +346,7 @@ export default {
 
     const body: Record<string, unknown> = ctx.request.body ?? {};
 
-    validateRegisterBody(body);
+    await validateRegisterBody(body);
 
     const email = String(body.email).trim().toLowerCase();
     const username = String(body.username).trim();
@@ -384,7 +446,7 @@ export default {
       if (!hasCurrent || !hasNew) {
         throw new ValidationError('Both your current password and a new password are required to change it');
       }
-      assertStrongPassword(String(body.newPassword), 'New password');
+      await assertPasswordPolicy(String(body.newPassword), 'New password');
       const valid = await userService.validatePassword(String(body.currentPassword), existing.password);
       if (!valid) {
         throw new ValidationError('Current password is incorrect');
@@ -508,7 +570,7 @@ export default {
 
     if (body.password !== undefined) {
       const password = String(body.password);
-      assertStrongPassword(password);
+      await assertPasswordPolicy(password);
       patch.password = password;
       changes.push('password');
     }
@@ -612,6 +674,125 @@ export default {
     ctx.body = { id: targetId, deleted: true };
   },
 
+  // Admin-only: force a new password for an account (privileged account
+  // management). The new password must satisfy the configured policy.
+  async resetPasswordByStaff(ctx: any) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(authUser)) {
+      return ctx.forbidden('Only administrators can reset passwords');
+    }
+
+    const targetId = Number(ctx.params.id);
+    if (!Number.isInteger(targetId)) {
+      throw new ValidationError('Invalid user id');
+    }
+    if (targetId === authUser.id) {
+      throw new ValidationError('Use your account settings to change your own password');
+    }
+
+    const body = (ctx.request.body ?? {}) as Record<string, unknown>;
+    const password = String(body.password ?? '');
+    if (!password) {
+      throw new ValidationError('Please provide a new password');
+    }
+    await assertPasswordPolicy(password, 'New password');
+
+    const userService = strapi.plugin('users-permissions').service('user');
+    const target = await userService.fetch(targetId);
+    if (!target) {
+      throw new ApplicationError('User not found');
+    }
+
+    await userService.edit(targetId, { password });
+
+    await recordAudit(strapi, {
+      action: 'password-reset',
+      entityType: 'user',
+      entityId: targetId,
+      entityLabel: target.username,
+      description: `Reset password for ${target.username} (${target.email})`,
+      actor: auditActor(authUser),
+    });
+
+    ctx.body = { id: targetId, reset: true };
+  },
+
+  // Admin-only: reactivate a deactivated account.
+  async activateUserByStaff(ctx: any) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(authUser)) {
+      return ctx.forbidden('Only administrators can activate accounts');
+    }
+
+    const targetId = Number(ctx.params.id);
+    if (!Number.isInteger(targetId)) {
+      throw new ValidationError('Invalid user id');
+    }
+
+    const userService = strapi.plugin('users-permissions').service('user');
+    const target = await userService.fetch(targetId);
+    if (!target) {
+      throw new ApplicationError('User not found');
+    }
+
+    await userService.edit(targetId, { blocked: false, confirmed: true });
+
+    await recordAudit(strapi, {
+      action: 'account-activated',
+      entityType: 'user',
+      entityId: targetId,
+      entityLabel: target.username,
+      description: `Activated account ${target.username} (${target.email})`,
+      actor: auditActor(authUser),
+    });
+
+    ctx.body = { id: targetId, activated: true };
+  },
+
+  // Admin-only: deactivate an account (blocks sign-in, account is retained).
+  async deactivateUserByStaff(ctx: any) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
+      return ctx.unauthorized();
+    }
+    if (!isAdmin(authUser)) {
+      return ctx.forbidden('Only administrators can deactivate accounts');
+    }
+
+    const targetId = Number(ctx.params.id);
+    if (!Number.isInteger(targetId)) {
+      throw new ValidationError('Invalid user id');
+    }
+    if (targetId === authUser.id) {
+      throw new ValidationError('You cannot deactivate your own account');
+    }
+
+    const userService = strapi.plugin('users-permissions').service('user');
+    const target = await userService.fetch(targetId);
+    if (!target) {
+      throw new ApplicationError('User not found');
+    }
+
+    await userService.edit(targetId, { blocked: true });
+
+    await recordAudit(strapi, {
+      action: 'account-deactivated',
+      entityType: 'user',
+      entityId: targetId,
+      entityLabel: target.username,
+      description: `Deactivated account ${target.username} (${target.email})`,
+      actor: auditActor(authUser),
+    });
+
+    ctx.body = { id: targetId, deactivated: true };
+  },
+
   // Admin-only: roles together with the permission actions they currently
   // hold. Used by the role & permissions page.
   async listRoles(ctx: any) {
@@ -676,6 +857,14 @@ export default {
         requestedSet.add(action);
       }
     }
+    // OAS pages (tenancies, bills, applications, maintenance, feedback) read
+    // user relations and rely on the OAS workspace baseline, so those actions
+    // are essential and protected.
+    if (roleType === 'oas') {
+      for (const action of OAS_LOCKED_ACTIONS) {
+        requestedSet.add(action);
+      }
+    }
 
     const current = await strapi.db.query(PERMISSION_MODEL_UID).findMany({
       where: { role: role.id },
@@ -718,3 +907,4 @@ export default {
     };
   },
 };
+

@@ -19,7 +19,8 @@ type Bill = {
   waterCharge?: number | string
   additionalCharges?: number | string
   dueDate?: string
-  status: 'Unpaid' | 'Paid'
+  status: 'Unpaid' | 'For Verification' | 'Verified' | 'Rejected' | 'Overdue'
+  verificationNote?: string
   paidAt?: string
   orNumber?: string
   receipt?: { id: number; url?: string } | null
@@ -32,6 +33,13 @@ type Bill = {
 }
 
 type ListResponse<T> = { data: T[] }
+
+type MeterReading = {
+  documentId?: string
+  electricMeterReading?: number | null
+  waterMeterReading?: number | null
+  readingDate?: string
+}
 
 useHead({ title: 'Manage bills | iMapSU' })
 
@@ -55,7 +63,7 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Bill>>('/ap
 const { data: tenancyData } = await useFetch<ListResponse<{ documentId: string; status: string; monthlyRent?: number | string; user?: { username?: string } | null; propertySpace?: { name?: string; propertyCode?: string } | null }>>('/api/tenancies', {
   baseURL,
   headers,
-  query: { 'populate[user]': true, 'populate[propertySpace]': true, 'pagination[pageSize]': 200 }
+  query: { 'populate[user]': true, 'populate[propertySpace]': true, pagination: { pageSize: 200 } }
 })
 
 const bills = computed(() => data.value?.data ?? [])
@@ -100,6 +108,35 @@ const clearFilters = () => {
   filterSearch.value = ''
 }
 
+const STATUS_FILTER_OPTIONS = [
+  { label: 'All statuses', value: 'All' },
+  { label: 'Unpaid', value: 'Unpaid' },
+  { label: 'For Verification', value: 'For Verification' },
+  { label: 'Verified', value: 'Verified' },
+  { label: 'Rejected', value: 'Rejected' },
+  { label: 'Overdue', value: 'Overdue' }
+]
+
+const isVerified = (bill: Bill) => bill.status === 'Verified'
+const isForVerification = (bill: Bill) => bill.status === 'For Verification'
+
+const isOverdue = (bill: Bill) => {
+  if (isVerified(bill) || !bill.dueDate) return false
+  if (bill.status === 'Overdue') return true
+  const due = new Date(bill.dueDate + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return due < today
+}
+
+const outstandingBills = computed(() => bills.value.filter(bill => !isVerified(bill)))
+const outstandingTotal = computed(() => outstandingBills.value.reduce((sum, bill) => sum + Number(bill.amount ?? 0), 0))
+const verifiedBills = computed(() => bills.value.filter(isVerified))
+const collectedTotal = computed(() => verifiedBills.value.reduce((sum, bill) => sum + Number(bill.amount ?? 0), 0))
+const overdueBills = computed(() => bills.value.filter(isOverdue))
+const overdueTotal = computed(() => overdueBills.value.reduce((sum, bill) => sum + Number(bill.amount ?? 0), 0))
+const forVerificationBills = computed(() => bills.value.filter(isForVerification))
+
 const formatCurrency = (amount?: number | string) => amount == null || amount === ''
   ? '—'
   : new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(Number(amount))
@@ -112,14 +149,6 @@ const formatDateTime = (value?: string) => value
   ? new Date(value).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
   : ''
 
-const isOverdue = (bill: Bill) => {
-  if (bill.status === 'Paid' || !bill.dueDate) return false
-  const due = new Date(bill.dueDate + 'T00:00:00')
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return due < today
-}
-
 const billRent = (bill: Bill) => {
   const stored = bill.tenancy?.monthlyRent
   if (stored != null && stored !== '') return Number(stored)
@@ -128,6 +157,23 @@ const billRent = (bill: Bill) => {
   const additional = Number(bill.additionalCharges ?? 0)
   const derived = Number(bill.amount) - electric - water - additional
   return derived > 0 ? derived : 0
+}
+
+const usage = (previous?: number | string, current?: number | string) => {
+  const prev = Number(previous ?? 0)
+  const curr = Number(current ?? 0)
+  if (previous == null || current == null || previous === '' || current === '' || curr < prev) return 0
+  return curr - prev
+}
+
+const statusColor = (bill: Bill) => {
+  switch (bill.status) {
+    case 'Verified': return 'success'
+    case 'Rejected':
+    case 'Overdue': return 'error'
+    case 'For Verification': return 'warning'
+    default: return 'secondary'
+  }
 }
 
 const formOpen = ref(false)
@@ -146,7 +192,8 @@ const form = reactive({
   waterRate: '',
   additionalCharges: '',
   dueDate: '',
-  status: 'Unpaid' as 'Unpaid' | 'Paid'
+  status: 'Unpaid' as Bill['status'],
+  verificationNote: ''
 })
 
 const openCreate = () => {
@@ -163,9 +210,12 @@ const openCreate = () => {
     waterRate: '',
     additionalCharges: '',
     dueDate: '',
-    status: 'Unpaid'
+    status: 'Unpaid',
+    verificationNote: ''
   })
   formError.value = ''
+  latestReading.value = null
+  previousReading.value = null
   formOpen.value = true
 }
 
@@ -183,9 +233,12 @@ const openEdit = (bill: Bill) => {
     waterRate: bill.waterRate != null ? String(bill.waterRate) : '',
     additionalCharges: bill.additionalCharges != null ? String(bill.additionalCharges) : '',
     dueDate: bill.dueDate ?? '',
-    status: bill.status ?? 'Unpaid'
+    status: bill.status ?? 'Unpaid',
+    verificationNote: bill.verificationNote ?? ''
   })
   formError.value = ''
+  latestReading.value = null
+  previousReading.value = null
   formOpen.value = true
 }
 
@@ -193,17 +246,79 @@ const selectedTenancy = computed(() =>
   (tenancyData.value?.data ?? []).find(tenancy => tenancy.documentId === form.tenancy) ?? null
 )
 
+const latestReading = ref<MeterReading | null>(null)
+const previousReading = ref<MeterReading | null>(null)
+const loadingReading = ref(false)
+
+// Pre-fill the meter fields from the field personnel readings recorded for the
+// selected tenancy (only when the fields are still blank). The latest reading
+// becomes "current"; the reading before it becomes "previous" so consumption is
+// derived from the reading history. Without a second reading, the previous
+// bill's current values are used as the fallback.
+const applyLatestReading = async (tenancyDocId: string) => {
+  loadingReading.value = true
+  latestReading.value = null
+  previousReading.value = null
+  try {
+    const readings = await $api<ListResponse<MeterReading>>('/api/meter-readings', {
+      query: {
+        'filters[tenancy][documentId][$eq]': tenancyDocId,
+        'sort[0]': 'readingDate:desc',
+        'pagination[pageSize]': 2,
+        'fields[0]': 'electricMeterReading',
+        'fields[1]': 'waterMeterReading',
+        'fields[2]': 'readingDate'
+      }
+    })
+    const latest = readings.data[0]
+    const previous = readings.data[1]
+    if (latest) {
+      latestReading.value = latest
+      if (form.electricCurrent === '' && latest.electricMeterReading != null) form.electricCurrent = String(latest.electricMeterReading)
+      if (form.waterCurrent === '' && latest.waterMeterReading != null) form.waterCurrent = String(latest.waterMeterReading)
+    }
+    if (previous) {
+      previousReading.value = previous
+      if (form.electricPrevious === '' && previous.electricMeterReading != null) form.electricPrevious = String(previous.electricMeterReading)
+      if (form.waterPrevious === '' && previous.waterMeterReading != null) form.waterPrevious = String(previous.waterMeterReading)
+    }
+    if (!previous) {
+      const prior = await $api<ListResponse<Bill>>('/api/bills', {
+        query: {
+          'filters[tenancy][documentId][$eq]': tenancyDocId,
+          'filters[electricMeterCurrent][$notNull]': true,
+          'sort[0]': 'createdAt:desc',
+          'pagination[pageSize]': 1,
+          'fields[0]': 'electricMeterCurrent',
+          'fields[1]': 'waterMeterCurrent'
+        }
+      })
+      const priorBill = prior.data[0]
+      if (priorBill) {
+        if (form.electricPrevious === '' && priorBill.electricMeterCurrent != null) form.electricPrevious = String(priorBill.electricMeterCurrent)
+        if (form.waterPrevious === '' && priorBill.waterMeterCurrent != null) form.waterPrevious = String(priorBill.waterMeterCurrent)
+      }
+    }
+  } catch {
+    // Reading pre-fill is best-effort; the OAS can always type the values.
+  } finally {
+    loadingReading.value = false
+  }
+}
+
+watch(() => form.tenancy, (docId) => {
+  if (!docId || editing.value) return
+  applyLatestReading(docId)
+})
+
+const formatReadingDate = (value?: string) => value
+  ? new Date(value + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  : ''
+
 const rentCharge = computed(() => {
   const rent = selectedTenancy.value?.monthlyRent
   return rent == null || rent === '' ? 0 : Number(rent)
 })
-
-const usage = (previous: string, current: string) => {
-  const prev = Number(previous)
-  const curr = Number(current)
-  if (!previous || !current || curr < prev) return 0
-  return curr - prev
-}
 
 const electricUsage = computed(() => usage(form.electricPrevious, form.electricCurrent))
 const waterUsage = computed(() => usage(form.waterPrevious, form.waterCurrent))
@@ -236,7 +351,8 @@ const save = async () => {
         waterCharge: waterCharge.value === 0 ? undefined : Number(waterCharge.value.toFixed(2)),
         additionalCharges: additionalChargesNum.value === 0 ? undefined : Number(additionalChargesNum.value.toFixed(2)),
         dueDate: form.dueDate || undefined,
-        status: form.status
+        status: form.status,
+        verificationNote: form.verificationNote?.trim() || undefined
       }
     }
     if (editing.value) {
@@ -277,6 +393,64 @@ const openHistory = (bill: Bill) => {
   }
   historyOpen.value = true
 }
+
+const workflowBusy = ref<string | null>(null)
+
+const setBillStatus = async (bill: Bill, nextStatus: Bill['status'], extra: Record<string, unknown> = {}) => {
+  const key = String(bill.documentId ?? bill.id)
+  workflowBusy.value = key
+  try {
+    await $api(`/api/bills/${key}`, {
+      method: 'PUT',
+      body: { data: { status: nextStatus, ...extra } }
+    })
+    toast.add({
+      title: `Bill ${nextStatus === 'Verified' ? 'verified' : nextStatus === 'Rejected' ? 'rejected' : nextStatus === 'Overdue' ? 'marked overdue' : 'reset to Unpaid'}`,
+      color: nextStatus === 'Verified' ? 'success' : 'neutral',
+      icon: 'i-lucide-check-circle'
+    })
+    await refresh()
+  } catch (err) {
+    toast.add({ title: 'Could not update bill', description: getErrorMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
+  } finally {
+    workflowBusy.value = null
+  }
+}
+
+const verifyBill = (bill: Bill) => {
+  if (!confirm(`Verify this payment of ${formatCurrency(bill.amount)}${bill.orNumber ? ` (OR ${bill.orNumber})` : ''}?`)) return
+  setBillStatus(bill, 'Verified')
+}
+
+const rejectOpen = ref(false)
+const rejectTarget = ref<Bill | null>(null)
+const rejectNote = ref('')
+const rejecting = ref(false)
+const rejectError = ref('')
+
+const openReject = (bill: Bill) => {
+  rejectTarget.value = bill
+  rejectNote.value = bill.verificationNote ?? ''
+  rejectError.value = ''
+  rejectOpen.value = true
+}
+
+const confirmReject = async () => {
+  if (!rejectTarget.value) return
+  rejecting.value = true
+  rejectError.value = ''
+  const target = rejectTarget.value
+  try {
+    await setBillStatus(target, 'Rejected', {
+      verificationNote: rejectNote.value?.trim() || undefined
+    })
+    rejectOpen.value = false
+  } catch (err) {
+    rejectError.value = getErrorMessage(err)
+  } finally {
+    rejecting.value = false
+  }
+}
 </script>
 
 <template>
@@ -285,7 +459,7 @@ const openHistory = (bill: Bill) => {
       <div>
         <p class="imapsu-page-eyebrow mb-2">Management</p>
         <h1 class="imapsu-page-heading">Bills</h1>
-        <p class="mt-2 max-w-xl text-muted">Issue bills against tenancies and track payment receipts.</p>
+        <p class="mt-2 max-w-xl text-muted">Issue bills, review tenant payment receipts, and verify or reject submitted payments.</p>
       </div>
       <div class="flex items-center gap-3">
         <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
@@ -302,13 +476,41 @@ const openHistory = (bill: Bill) => {
     <UEmpty v-else-if="bills.length === 0" icon="i-lucide-receipt" title="No bills yet" description="Issue your first bill to get started." />
 
     <div v-else class="space-y-4">
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <UCard class="border-t-4 border-t-maroon-700" :ui="{ body: 'p-3' }">
+          <p class="text-xs text-muted">Outstanding</p>
+          <p class="mt-1 text-xl font-semibold text-error">{{ formatCurrency(outstandingTotal) }}</p>
+          <p class="text-xs text-muted">{{ outstandingBills.length }} unverified</p>
+        </UCard>
+        <UCard class="border-t-4 border-t-success-500" :ui="{ body: 'p-3' }">
+          <p class="text-xs text-muted">Collected</p>
+          <p class="mt-1 text-xl font-semibold text-success-600">{{ formatCurrency(collectedTotal) }}</p>
+          <p class="text-xs text-muted">{{ verifiedBills.length }} verified</p>
+        </UCard>
+        <UCard class="border-t-4 border-t-gold-500" :ui="{ body: 'p-3' }">
+          <p class="text-xs text-muted">For verification</p>
+          <p class="mt-1 text-xl font-semibold text-warning">{{ forVerificationBills.length }}</p>
+          <p class="text-xs text-muted">receipts to review</p>
+        </UCard>
+        <UCard class="border-t-4 border-t-error" :ui="{ body: 'p-3' }">
+          <p class="text-xs text-muted">Overdue</p>
+          <p class="mt-1 text-xl font-semibold text-error">{{ overdueBills.length }}</p>
+          <p class="text-xs text-muted">{{ formatCurrency(overdueTotal) }} total</p>
+        </UCard>
+        <UCard class="border-t-4 border-t-primary" :ui="{ body: 'p-3' }">
+          <p class="text-xs text-muted">Bills</p>
+          <p class="mt-1 text-xl font-semibold text-highlighted">{{ bills.length }}</p>
+          <p class="text-xs text-muted">all periods</p>
+        </UCard>
+      </div>
+
       <UCard :ui="{ body: 'p-4' }">
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <UFormField label="Tenant">
             <USelect v-model="filterTenancy" :items="filterTenancyOptions" searchable />
           </UFormField>
           <UFormField label="Status">
-            <USelect v-model="filterStatus" :items="[{ label: 'All statuses', value: 'All' }, { label: 'Unpaid', value: 'Unpaid' }, { label: 'Paid', value: 'Paid' }]" />
+            <USelect v-model="filterStatus" :items="STATUS_FILTER_OPTIONS" />
           </UFormField>
           <UFormField label="Period">
             <UInput v-model="filterPeriod" placeholder="e.g. 2026-08" />
@@ -336,18 +538,18 @@ const openHistory = (bill: Bill) => {
           </div>
           <div class="flex items-center gap-2">
             <UBadge v-if="isOverdue(bill)" color="error" variant="solid">Overdue</UBadge>
-            <UBadge :color="bill.status === 'Paid' ? 'success' : 'secondary'" variant="subtle">{{ bill.status }}</UBadge>
+            <UBadge :color="statusColor(bill)" variant="subtle">{{ bill.status }}</UBadge>
           </div>
         </div>
 
         <dl class="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div><dt class="text-xs text-muted">Total</dt><dd class="font-semibold text-highlighted">{{ formatCurrency(bill.amount) }}</dd></div>
           <div><dt class="text-xs text-muted">Rent</dt><dd class="font-medium text-highlighted">{{ formatCurrency(billRent(bill)) }}</dd></div>
-          <div><dt class="text-xs text-muted">Electric</dt><dd class="font-medium text-highlighted">{{ formatCurrency(bill.electricCharge) }}</dd></div>
-          <div><dt class="text-xs text-muted">Water</dt><dd class="font-medium text-highlighted">{{ formatCurrency(bill.waterCharge) }}</dd></div>
+          <div><dt class="text-xs text-muted">Electric</dt><dd class="font-medium text-highlighted">{{ formatCurrency(bill.electricCharge) }} <span v-if="bill.electricMeterCurrent != null" class="text-xs text-muted">({{ usage(bill.electricMeterPrevious, bill.electricMeterCurrent) }} units)</span></dd></div>
+          <div><dt class="text-xs text-muted">Water</dt><dd class="font-medium text-highlighted">{{ formatCurrency(bill.waterCharge) }} <span v-if="bill.waterMeterCurrent != null" class="text-xs text-muted">({{ usage(bill.waterMeterPrevious, bill.waterMeterCurrent) }} units)</span></dd></div>
           <div><dt class="text-xs text-muted">Additional charges</dt><dd class="font-medium text-highlighted">{{ formatCurrency(bill.additionalCharges) }}</dd></div>
           <div><dt class="text-xs text-muted">Due date</dt><dd class="font-medium text-highlighted">{{ formatDate(bill.dueDate) || '—' }}</dd></div>
-          <div v-if="bill.status === 'Paid'"><dt class="text-xs text-muted">Paid on</dt><dd class="font-medium text-highlighted">{{ formatDateTime(bill.paidAt) || '—' }}</dd></div>
+          <div v-if="bill.status === 'Verified'"><dt class="text-xs text-muted">Verified on</dt><dd class="font-medium text-highlighted">{{ formatDateTime(bill.paidAt) || '—' }}</dd></div>
           <div>
             <dt class="text-xs text-muted">OR No.</dt>
             <dd class="font-mono font-medium text-highlighted">{{ bill.orNumber || '—' }}</dd>
@@ -359,9 +561,18 @@ const openHistory = (bill: Bill) => {
               <span v-else class="text-muted">—</span>
             </dd>
           </div>
+          <div v-if="bill.verificationNote" class="col-span-2 sm:col-span-4">
+            <dt class="text-xs text-muted">Verification note</dt>
+            <dd class="mt-0.5 rounded-lg bg-warning/10 px-3 py-2 text-sm text-toned">{{ bill.verificationNote }}</dd>
+          </div>
         </dl>
 
-        <div class="mt-4 flex gap-2 border-t border-default pt-4">
+        <div class="mt-4 flex flex-wrap gap-2 border-t border-default pt-4">
+          <template v-if="bill.status === 'For Verification'">
+            <UButton label="Verify payment" icon="i-lucide-badge-check" color="success" size="sm" :loading="workflowBusy === String(bill.documentId ?? bill.id)" @click="verifyBill(bill)" />
+            <UButton label="Reject" icon="i-lucide-x-circle" color="error" variant="subtle" size="sm" :disabled="workflowBusy === String(bill.documentId ?? bill.id)" @click="openReject(bill)" />
+          </template>
+          <UButton v-if="(bill.status === 'Unpaid' || bill.status === 'For Verification' || bill.status === 'Rejected') && !isVerified(bill)" label="Mark overdue" icon="i-lucide-alarm-clock" color="neutral" variant="subtle" size="sm" @click="setBillStatus(bill, 'Overdue')" />
           <UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="subtle" size="sm" @click="openEdit(bill)" />
           <UButton label="History" icon="i-lucide-history" color="neutral" variant="subtle" size="sm" @click="openHistory(bill)" />
           <UButton label="Delete" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" @click="remove(bill)" />
@@ -369,6 +580,22 @@ const openHistory = (bill: Bill) => {
       </UCard>
       </template>
     </div>
+
+    <UModal v-model:open="rejectOpen" title="Reject payment" description="Reject the submitted payment and optionally record why.">
+      <template #body>
+        <form class="space-y-4" @submit.prevent="confirmReject">
+          <UAlert color="warning" icon="i-lucide-triangle-alert" title="Bill will be marked Rejected" :description="rejectTarget ? `${formatCurrency(rejectTarget.amount)} bill${rejectTarget.period ? ` for ${rejectTarget.period}` : ''} will be moved out of verification.` : ''" />
+          <UFormField label="Verification note" description="Reason for rejection, visible to the tenant.">
+            <UTextarea v-model="rejectNote" :rows="3" placeholder="e.g. OR number does not match the receipt amount." />
+          </UFormField>
+          <UAlert v-if="rejectError" color="error" icon="i-lucide-circle-alert" :description="rejectError" />
+          <div class="flex justify-end gap-2">
+            <UButton label="Cancel" color="neutral" variant="ghost" :disabled="rejecting" @click="rejectOpen = false" />
+            <UButton type="submit" color="error" :loading="rejecting">Reject payment</UButton>
+          </div>
+        </form>
+      </template>
+    </UModal>
 
     <StatusHistoryModal
       v-if="historyTarget"
@@ -384,6 +611,28 @@ const openHistory = (bill: Bill) => {
           <UFormField label="Tenancy" required>
             <USelect v-model="form.tenancy" :items="tenancyOptions" placeholder="Select a tenancy" searchable />
           </UFormField>
+
+          <div v-if="latestReading" class="space-y-2">
+            <UAlert
+              color="success"
+              icon="i-lucide-gauge"
+              title="Readings pre-filled from field recording"
+              :description="`Recorded on ${formatReadingDate(latestReading.readingDate)} — electric ${latestReading.electricMeterReading ?? '—'}, water ${latestReading.waterMeterReading ?? '—'}. Adjust before saving if needed.`"
+            />
+            <UAlert
+              v-if="!previousReading && (form.electricPrevious || form.waterPrevious)"
+              color="info"
+              icon="i-lucide-history"
+              title="Previous reading carried over"
+              description="Only one reading exists for this tenancy, so the previous meter values were taken from the last issued bill."
+            />
+          </div>
+          <UAlert
+            v-else-if="loadingReading"
+            color="neutral"
+            icon="i-lucide-loader-circle"
+            title="Checking for field meter readings…"
+          />
 
           <UFormField label="Billing period">
             <UInput v-model="form.period" placeholder="e.g. 2026-08" />
@@ -433,10 +682,14 @@ const openHistory = (bill: Bill) => {
             <UFormField label="Due date">
               <UInput v-model="form.dueDate" type="date" />
             </UFormField>
-            <UFormField label="Status">
-              <USelect v-model="form.status" :items="[{ label: 'Unpaid', value: 'Unpaid' }, { label: 'Paid', value: 'Paid' }]" />
+            <UFormField label="Status" description="Verified sets the verified/paid timestamp; other statuses clear it.">
+              <USelect v-model="form.status" :items="[{ label: 'Unpaid', value: 'Unpaid' }, { label: 'For Verification', value: 'For Verification' }, { label: 'Verified', value: 'Verified' }, { label: 'Rejected', value: 'Rejected' }, { label: 'Overdue', value: 'Overdue' }]" />
             </UFormField>
           </div>
+
+          <UFormField label="Verification note" description="Visible to the tenant when a payment is rejected.">
+            <UTextarea v-model="form.verificationNote" :rows="2" />
+          </UFormField>
 
           <div class="rounded-lg border border-default p-4">
             <p class="text-xs font-medium text-muted">Summary</p>

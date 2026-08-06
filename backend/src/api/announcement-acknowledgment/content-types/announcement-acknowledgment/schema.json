@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "announcement_acknowledgments",
+  "info": {
+    "singularName": "announcement-acknowledgment",
+    "pluralName": "announcement-acknowledgments",
+    "displayName": "Announcement Acknowledgment"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "announcement": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::announcement.announcement",
+      "inversedBy": "acknowledgments"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "acknowledgedAt": {
+      "type": "datetime"
+    }
+  }
+}

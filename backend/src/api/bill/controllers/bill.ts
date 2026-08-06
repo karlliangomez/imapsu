@@ -9,10 +9,40 @@
 import { factories } from '@strapi/strapi';
 import type { Core } from '@strapi/strapi';
 import { isStaff } from '../../../utils/access';
+import { recordNotification } from '../../../utils/notifications';
 import { extractOrNumberFromFile } from '../../../utils/or-number';
 import { recordStatusChange } from '../../../utils/status-history';
 
 const UID = 'api::bill.bill';
+
+// Returns the "current" meter value of the most recent bill that recorded one,
+// so a newly issued bill can use it as its "previous" value. Falls back to the
+// tenancy's monthly rent-derived amount only when no prior reading exists.
+async function lastBillMeter(
+  strapi: any,
+  tenancyRef: unknown,
+  field: 'electricMeterCurrent' | 'waterMeterCurrent'
+): Promise<number | null> {
+  const docId =
+    typeof tenancyRef === 'string'
+      ? tenancyRef
+      : tenancyRef && typeof tenancyRef === 'object'
+        ? (tenancyRef as { documentId?: string }).documentId
+        : undefined;
+  if (!docId) return null;
+
+  try {
+    const row = (await strapi.db.query(UID).findOne({
+      where: { tenancy: { documentId: docId }, [field]: { $notNull: true } },
+      orderBy: { createdAt: 'desc' },
+      select: [field],
+    })) as { [key: string]: number | null } | null;
+    const value = row?.[field];
+    return value == null ? null : Number(value);
+  } catch {
+    return null;
+  }
+}
 
 export default factories.createCoreController(UID, ({ strapi }) => {
   const base = (self: unknown) => self as unknown as Core.CoreAPI.Controller.Base;
@@ -39,6 +69,67 @@ export default factories.createCoreController(UID, ({ strapi }) => {
   };
 
   return {
+    /**
+     * Staff issue bills. When meter readings were recorded by field personnel
+     * for the tenancy, the latest readings are pre-filled as the current
+     * meter values so utility consumption is computed from them.
+     */
+    async create(ctx) {
+      const user = ctx.state.user as { id: number } | undefined;
+      if (!user) {
+        return ctx.unauthorized();
+      }
+
+      if (!isStaff(user)) {
+        return ctx.forbidden('Only staff can issue bills');
+      }
+
+      const body = (ctx.request.body ?? {}) as Record<string, unknown>;
+      const data = (body.data ?? body) as Record<string, unknown>;
+
+      // When meter values are left blank, pre-fill them from the readings
+      // recorded by field personnel so the bill is actually derived from the
+      // meter reading history instead of manual re-entry.
+      if (data.electricMeterCurrent == null || data.waterMeterCurrent == null) {
+        const reading = await strapi
+          .service('api::meter-reading.meter-reading')
+          ?.latestForTenancy?.(data.tenancy);
+        if (reading) {
+          if (data.electricMeterCurrent == null && reading.electricMeterReading != null) {
+            data.electricMeterCurrent = reading.electricMeterReading;
+          }
+          if (data.waterMeterCurrent == null && reading.waterMeterReading != null) {
+            data.waterMeterCurrent = reading.waterMeterReading;
+          }
+          // Previous = the reading before the latest one (consumption is the
+          // difference between two recorded readings).
+          if (data.electricMeterPrevious == null && reading.previousElectricMeterReading != null) {
+            data.electricMeterPrevious = reading.previousElectricMeterReading;
+          }
+          if (data.waterMeterPrevious == null && reading.previousWaterMeterReading != null) {
+            data.waterMeterPrevious = reading.previousWaterMeterReading;
+          }
+        }
+      }
+
+      // No second reading on record yet: fall back to the previous bill's
+      // current values so usage still accumulates across periods.
+      if (data.electricMeterPrevious == null && data.electricMeterCurrent != null) {
+        data.electricMeterPrevious = await lastBillMeter(strapi, data.tenancy, 'electricMeterCurrent');
+      }
+      if (data.waterMeterPrevious == null && data.waterMeterCurrent != null) {
+        data.waterMeterPrevious = await lastBillMeter(strapi, data.tenancy, 'waterMeterCurrent');
+      }
+
+      const ctrl = base(this);
+      await ctrl.validateInput(data, ctx);
+      const sanitizedData = (await ctrl.sanitizeInput(data, ctx)) as Record<string, unknown>;
+
+      const entity = await service().create({ data: sanitizedData });
+      const sanitized = await ctrl.sanitizeOutput(entity, ctx);
+      return ctrl.transformResponse(sanitized);
+    },
+
     async find(ctx) {
       const user = ctx.state.user as { id: number } | undefined;
       if (!user) {
@@ -95,13 +186,14 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         const withOr = await withExtractedOrNumber(data);
         const sanitizedData = (await ctrl.sanitizeInput(withOr, ctx)) as Record<string, unknown>;
 
-        // Staff verify receipts; when they change the payment status, sync paidAt.
-        if (sanitizedData.status === 'Paid' && sanitizedData.paidAt == null) {
+        // Verified = OAS confirmed the payment against the uploaded receipt.
+        // Sync paidAt accordingly when the verification status changes.
+        if (sanitizedData.status === 'Verified' && sanitizedData.paidAt == null) {
           const current = await service().findOne(ctx.params.id, { fields: ['status', 'paidAt'] });
-          if (!current || current.status !== 'Paid' || !current.paidAt) {
+          if (!current || current.status !== 'Verified' || !current.paidAt) {
             sanitizedData.paidAt = new Date().toISOString();
           }
-        } else if (sanitizedData.status === 'Unpaid') {
+        } else if (sanitizedData.status && sanitizedData.status !== 'Verified') {
           sanitizedData.paidAt = null;
         }
 
@@ -129,14 +221,19 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         return ctrl.transformResponse(sanitized);
       }
 
-      // Tenants may only upload a payment receipt (and set/verify the OR number)
-      // against one of their own bills.
+      // Tenants may only upload a payment receipt (and set the OR number) on
+      // one of their own bills. Uploading a receipt stages it for verification
+      // by the OAS; the bill is never marked paid by the tenant.
       const existing = await service().findOne(ctx.params.id, {
         populate: { receipt: true },
         filters: { tenancy: { user: { id: { $eq: user.id } } } },
       });
       if (!existing) {
         return ctx.notFound();
+      }
+
+      if (existing.status === 'Verified') {
+        return ctx.forbidden('This bill is already verified; contact the Office of Auxiliary Services to make changes.');
       }
 
       if (!('receipt' in data) && !('orNumber' in data)) {
@@ -152,18 +249,19 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       const ctrl = base(this);
       const sanitizedData = (await ctrl.sanitizeInput(withOr, ctx)) as Record<string, unknown>;
 
-      // Attaching a receipt only stages it (OCR fills the OR number for review).
-      // The payment is recorded when the tenant submits the OR number — extracted
-      // or entered manually; staff verify afterwards.
+      // A receipt upload or OR-number entry moves the bill to For Verification
+      // (advance billing notice), ahead of the OAS verifying the receipt.
       const submittedOr = data.orNumber != null ? String(data.orNumber).trim() : '';
-      if (submittedOr) {
-        sanitizedData.status = 'Paid';
-        sanitizedData.paidAt = new Date().toISOString();
+      const hasReceipt = data.receipt != null;
+      if (hasReceipt || submittedOr) {
+        sanitizedData.status = 'For Verification';
       }
 
-      // Removing a staged receipt resets the OR number that was extracted from it.
+      // Removing a staged receipt resets the OR number extracted from it and
+      // returns the bill to Unpaid.
       if (data.receipt == null && data.orNumber == null) {
         sanitizedData.orNumber = null;
+        sanitizedData.status = 'Unpaid';
       }
 
       const previousReceiptId =
@@ -185,6 +283,24 @@ export default factories.createCoreController(UID, ({ strapi }) => {
           fromStatus: existing.status,
           toStatus: sanitizedData.status as string,
           changedBy: user.id,
+        });
+      }
+
+      // Surface receipt uploads / OR-number submissions to the OAS. Removing a
+      // staged receipt (data.receipt == null) produces no notification.
+      const receiptUploaded =
+        data.receipt != null || (data.orNumber != null && String(data.orNumber).trim() !== '');
+      if (receiptUploaded) {
+        const username = (user as { username?: string }).username ?? 'Tenant';
+        const or = sanitizedData.orNumber ? ` (OR ${sanitizedData.orNumber})` : '';
+        await recordNotification(strapi, {
+          type: 'receipt',
+          entityType: 'bill',
+          entityId: existing.documentId,
+          entityLabel: existing.period ?? 'bill',
+          title: 'Payment receipt uploaded',
+          description: `${username} uploaded a receipt for ${existing.period ?? 'a bill'}${or}.`,
+          actorUsername: username,
         });
       }
 

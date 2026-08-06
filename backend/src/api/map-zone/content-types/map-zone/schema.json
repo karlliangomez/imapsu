@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "map_zones",
+  "info": {
+    "singularName": "map-zone",
+    "pluralName": "map-zones",
+    "displayName": "Map Zone",
+    "description": "A named, clickable footprint drawn on top of the 3D campus map."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "type": {
+      "type": "enumeration",
+      "required": true,
+      "default": "Property",
+      "enum": [
+        "Property",
+        "Landmark"
+      ]
+    },
+    "color": {
+      "type": "string",
+      "default": "#d4af37"
+    },
+    "height": {
+      "type": "decimal",
+      "default": 6
+    },
+    "baseY": {
+      "type": "decimal"
+    },
+    "corners": {
+      "type": "json",
+      "required": true
+    },
+    "order": {
+      "type": "integer",
+      "default": 0
+    },
+    "propertySpace": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::property-space.property-space",
+      "inversedBy": "mapZones"
+    }
+  }
+}

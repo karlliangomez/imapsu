@@ -102,7 +102,35 @@ export default factories.createCoreController(UID, ({ strapi }) => {
     },
 
     async update(ctx) {
-      return ctx.forbidden('Feedback cannot be edited.');
+      const user = ctx.state.user as { id: number } | undefined;
+      if (!user) {
+        return ctx.unauthorized();
+      }
+
+      // Students can never alter what they submitted. Staff (OAS) may only
+      // record a review category and the action taken — the original feedback
+      // itself stays immutable.
+      if (!isStaff(user)) {
+        return ctx.forbidden('Feedback cannot be edited.');
+      }
+
+      const body = (ctx.request.body ?? {}) as Record<string, unknown>;
+      const data = (body.data ?? body) as Record<string, unknown>;
+
+      const allowed: Record<string, unknown> = {};
+      if ('category' in data) allowed.category = data.category;
+      if ('staffAction' in data) allowed.staffAction = data.staffAction;
+
+      const ctrl = base(this);
+      const sanitizedData = (await ctrl.sanitizeInput(allowed, ctx)) as Record<string, unknown>;
+
+      const entity = await service().update(ctx.params.id, { data: sanitizedData });
+      if (!entity) {
+        return ctx.notFound();
+      }
+
+      const sanitized = await ctrl.sanitizeOutput(entity, ctx);
+      return ctrl.transformResponse(sanitized);
     },
 
     async delete(ctx) {

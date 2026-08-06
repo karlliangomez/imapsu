@@ -33,9 +33,23 @@
         "Other"
       ]
     },
+    "priority": {
+      "type": "enumeration",
+      "default": "Normal",
+      "enum": [
+        "Low",
+        "Normal",
+        "High",
+        "Critical"
+      ]
+    },
     "description": {
       "type": "text",
       "required": true
+    },
+    "images": {
+      "type": "media",
+      "multiple": true
     },
     "status": {
       "type": "enumeration",
@@ -45,6 +59,15 @@
         "In Progress",
         "Completed"
       ]
+    },
+    "actionNotes": {
+      "type": "text"
+    },
+    "completedAt": {
+      "type": "datetime"
+    },
+    "followUps": {
+      "type": "json"
     }
   }
 }

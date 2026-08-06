@@ -45,7 +45,7 @@ const { data: propertyData } = await useFetch<ListResponse<{ documentId: string;
 })
 
 const tenancies = computed(() => data.value?.data ?? [])
-const TENANT_ROLE_TYPES = ['student', 'aspiring-tenant', 'current-tenant']
+const TENANT_ROLE_TYPES = ['aspiring-tenant', 'current-tenant']
 const userOptions = computed(() => (userData.value ?? [])
   .filter(user => TENANT_ROLE_TYPES.includes(user.role?.type ?? ''))
   .map(user => ({ label: `${user.username} (${user.email})`, value: String(user.id) })))

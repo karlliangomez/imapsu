@@ -17,6 +17,7 @@ export const useAuth = () => {
   const isStudent = computed(() => role.value === 'student')
   const isAspiringTenant = computed(() => role.value === 'aspiring-tenant')
   const isCurrentTenant = computed(() => role.value === 'current-tenant')
+  const isFieldPersonnel = computed(() => role.value === 'field-personnel')
   const isOas = computed(() => role.value === 'oas')
   const isAdmin = computed(() => role.value === 'admin')
   const isStaff = computed(() => isOas.value || isAdmin.value)
@@ -84,6 +85,7 @@ export const useAuth = () => {
     isStudent,
     isAspiringTenant,
     isCurrentTenant,
+    isFieldPersonnel,
     isOas,
     isAdmin,
     isStaff,

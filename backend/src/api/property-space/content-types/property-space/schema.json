@@ -24,6 +24,9 @@
       "type": "string",
       "required": true
     },
+    "campus": {
+      "type": "string"
+    },
     "floor": {
       "type": "string"
     },
@@ -32,6 +35,31 @@
     },
     "area": {
       "type": "decimal"
+    },
+    "rentalClassification": {
+      "type": "enumeration",
+      "default": "Other",
+      "enum": [
+        "Food and Beverage",
+        "Retail",
+        "Services",
+        "Office",
+        "Storage",
+        "Other"
+      ]
+    },
+    "businessName": {
+      "type": "string"
+    },
+    "photos": {
+      "type": "media",
+      "multiple": true
+    },
+    "productsServices": {
+      "type": "text"
+    },
+    "operatingDetails": {
+      "type": "text"
     },
     "space_status": {
       "type": "enumeration",
@@ -67,6 +95,12 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::maintenance-ticket.maintenance-ticket",
+      "mappedBy": "propertySpace"
+    },
+    "mapZones": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::map-zone.map-zone",
       "mappedBy": "propertySpace"
     }
   }

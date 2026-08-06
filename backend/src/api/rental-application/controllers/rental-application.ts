@@ -10,6 +10,7 @@
 import { factories } from '@strapi/strapi';
 import type { Core } from '@strapi/strapi';
 import { isStaff } from '../../../utils/access';
+import { recordNotification, resolvePropertyLabel } from '../../../utils/notifications';
 import { recordStatusChange } from '../../../utils/status-history';
 
 const UID = 'api::rental-application.rental-application';
@@ -89,6 +90,21 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         data: { ...sanitizedData, ...(isStaff(user) ? {} : { user: user.id }) },
       });
 
+      if (!isStaff(user)) {
+        const propertyLabel = await resolvePropertyLabel(strapi, data.propertySpace);
+        await recordNotification(strapi, {
+          type: 'application',
+          entityType: 'rental-application',
+          entityId: (entity as { documentId?: string }).documentId,
+          entityLabel: propertyLabel,
+          title: 'New rental application',
+          description: `${
+            (user as { username?: string }).username ?? 'Applicant'
+          } applied to ${propertyLabel ?? 'a property'}.`,
+          actorUsername: (user as { username?: string }).username ?? null,
+        });
+      }
+
       const sanitized = await ctrl.sanitizeOutput(entity, ctx);
       return ctrl.transformResponse(sanitized);
     },
@@ -109,7 +125,13 @@ export default factories.createCoreController(UID, ({ strapi }) => {
 
         const previous =
           sanitizedData.status !== undefined
-            ? await service().findOne(ctx.params.id, { fields: ['status', 'documentId'] })
+            ? await service().findOne(ctx.params.id, {
+                fields: ['status', 'documentId'],
+                populate: {
+                  user: { fields: ['id'] },
+                  propertySpace: { fields: ['name'] },
+                },
+              })
             : null;
 
         const entity = await service().update(ctx.params.id, { data: sanitizedData });
@@ -129,6 +151,24 @@ export default factories.createCoreController(UID, ({ strapi }) => {
             toStatus: sanitizedData.status as string,
             changedBy: user.id,
           });
+
+          // The applicant receives a notification whenever the OAS moves the
+          // application to For Review / For Recommendation / Approved /
+          // Declined / Cancelled.
+          const applicant = previous.user as { id?: number } | undefined | null;
+          const propertyName = (previous.propertySpace as { name?: string } | null)?.name ?? null;
+          if (applicant?.id != null) {
+            await recordNotification(strapi, {
+              type: 'application',
+              entityType: 'rental-application',
+              entityId: previous.documentId ?? ctx.params.id,
+              entityLabel: propertyName,
+              title: 'Application status updated',
+              description: `Your application${propertyName ? ` for ${propertyName}` : ''} is now ${sanitizedData.status}.`,
+              actorUsername: (user as { username?: string }).username ?? 'OAS',
+              recipientId: applicant.id,
+            });
+          }
         }
 
         const sanitized = await ctrl.sanitizeOutput(entity, ctx);

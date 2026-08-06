@@ -443,6 +443,43 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAnnouncementAcknowledgmentAnnouncementAcknowledgment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'announcement_acknowledgments';
+  info: {
+    displayName: 'Announcement Acknowledgment';
+    pluralName: 'announcement-acknowledgments';
+    singularName: 'announcement-acknowledgment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    acknowledgedAt: Schema.Attribute.DateTime;
+    announcement: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::announcement.announcement'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::announcement-acknowledgment.announcement-acknowledgment'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiAnnouncementAnnouncement
   extends Struct.CollectionTypeSchema {
   collectionName: 'announcements';
@@ -455,6 +492,10 @@ export interface ApiAnnouncementAnnouncement
     draftAndPublish: true;
   };
   attributes: {
+    acknowledgments: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::announcement-acknowledgment.announcement-acknowledgment'
+    >;
     audience: Schema.Attribute.Enumeration<
       ['Everyone', 'Students', 'Tenants']
     > &
@@ -558,12 +599,15 @@ export interface ApiBillBill extends Struct.CollectionTypeSchema {
     period: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     receipt: Schema.Attribute.Media;
-    status: Schema.Attribute.Enumeration<['Unpaid', 'Paid']> &
+    status: Schema.Attribute.Enumeration<
+      ['Unpaid', 'For Verification', 'Verified', 'Rejected', 'Overdue']
+    > &
       Schema.Attribute.DefaultTo<'Unpaid'>;
     tenancy: Schema.Attribute.Relation<'manyToOne', 'api::tenancy.tenancy'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    verificationNote: Schema.Attribute.Text;
     waterCharge: Schema.Attribute.Decimal;
     waterMeterCurrent: Schema.Attribute.Decimal;
     waterMeterPrevious: Schema.Attribute.Decimal;
@@ -586,6 +630,10 @@ export interface ApiFeedbackFeedback extends Struct.CollectionTypeSchema {
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    category: Schema.Attribute.Enumeration<
+      ['Product', 'Service', 'Cleanliness', 'Environment', 'Staff', 'Other']
+    > &
+      Schema.Attribute.DefaultTo<'Other'>;
     comment: Schema.Attribute.Text;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -610,6 +658,7 @@ export interface ApiFeedbackFeedback extends Struct.CollectionTypeSchema {
         },
         number
       >;
+    staffAction: Schema.Attribute.Text;
     tenantName: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -629,20 +678,28 @@ export interface ApiMaintenanceTicketMaintenanceTicket
     draftAndPublish: false;
   };
   attributes: {
+    actionNotes: Schema.Attribute.Text;
     category: Schema.Attribute.Enumeration<
       ['Plumbing', 'Electrical', 'Structural', 'Internet', 'Other']
     > &
       Schema.Attribute.Required;
+    completedAt: Schema.Attribute.DateTime;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.Text & Schema.Attribute.Required;
+    followUps: Schema.Attribute.JSON;
+    images: Schema.Attribute.Media<undefined, true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::maintenance-ticket.maintenance-ticket'
     > &
       Schema.Attribute.Private;
+    priority: Schema.Attribute.Enumeration<
+      ['Low', 'Normal', 'High', 'Critical']
+    > &
+      Schema.Attribute.DefaultTo<'Normal'>;
     propertySpace: Schema.Attribute.Relation<
       'manyToOne',
       'api::property-space.property-space'
@@ -656,6 +713,160 @@ export interface ApiMaintenanceTicketMaintenanceTicket
       ['Pending', 'In Progress', 'Completed']
     > &
       Schema.Attribute.DefaultTo<'Pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMapLabelMapLabel extends Struct.CollectionTypeSchema {
+  collectionName: 'map_labels';
+  info: {
+    description: "A custom display name for a building on the 3D campus map, keyed to the building's identity in the GLB model.";
+    displayName: 'Map Label';
+    pluralName: 'map-labels';
+    singularName: 'map-label';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    buildingKey: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    label: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::map-label.map-label'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMapZoneMapZone extends Struct.CollectionTypeSchema {
+  collectionName: 'map_zones';
+  info: {
+    description: 'A named, clickable footprint drawn on top of the 3D campus map.';
+    displayName: 'Map Zone';
+    pluralName: 'map-zones';
+    singularName: 'map-zone';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    baseY: Schema.Attribute.Decimal;
+    color: Schema.Attribute.String & Schema.Attribute.DefaultTo<'#d4af37'>;
+    corners: Schema.Attribute.JSON & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    height: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<6>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::map-zone.map-zone'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    propertySpace: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::property-space.property-space'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    type: Schema.Attribute.Enumeration<['Property', 'Landmark']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Property'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMeterReadingMeterReading
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'meter_readings';
+  info: {
+    displayName: 'Meter Reading';
+    pluralName: 'meter-readings';
+    singularName: 'meter-reading';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    electricMeterReading: Schema.Attribute.Decimal;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::meter-reading.meter-reading'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    readingDate: Schema.Attribute.Date & Schema.Attribute.Required;
+    recordedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    tenancy: Schema.Attribute.Relation<'manyToOne', 'api::tenancy.tenancy'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    waterMeterReading: Schema.Attribute.Decimal;
+  };
+}
+
+export interface ApiNotificationNotification
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notifications';
+  info: {
+    displayName: 'Notification';
+    pluralName: 'notifications';
+    singularName: 'notification';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    actorUsername: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    entityId: Schema.Attribute.String;
+    entityLabel: Schema.Attribute.String;
+    entityType: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification.notification'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    read: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    recipient: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<
+      ['application', 'ticket', 'receipt', 'follow-up', 'announcement']
+    > &
+      Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -676,6 +887,8 @@ export interface ApiPropertySpacePropertySpace
   attributes: {
     area: Schema.Attribute.Decimal;
     building: Schema.Attribute.String & Schema.Attribute.Required;
+    businessName: Schema.Attribute.String;
+    campus: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -692,8 +905,12 @@ export interface ApiPropertySpacePropertySpace
       'oneToMany',
       'api::maintenance-ticket.maintenance-ticket'
     >;
+    mapZones: Schema.Attribute.Relation<'oneToMany', 'api::map-zone.map-zone'>;
     monthlyRent: Schema.Attribute.Decimal;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    operatingDetails: Schema.Attribute.Text;
+    photos: Schema.Attribute.Media<undefined, true>;
+    productsServices: Schema.Attribute.Text;
     propertyCode: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
@@ -702,6 +919,10 @@ export interface ApiPropertySpacePropertySpace
       'oneToMany',
       'api::rental-application.rental-application'
     >;
+    rentalClassification: Schema.Attribute.Enumeration<
+      ['Food and Beverage', 'Retail', 'Services', 'Office', 'Storage', 'Other']
+    > &
+      Schema.Attribute.DefaultTo<'Other'>;
     space_status: Schema.Attribute.Enumeration<['Vacant', 'Occupied']> &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'Vacant'>;
@@ -765,6 +986,7 @@ export interface ApiRentalApplicationRentalApplication
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    evaluation: Schema.Attribute.Text;
     letterOfIntent: Schema.Attribute.Media;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -778,8 +1000,16 @@ export interface ApiRentalApplicationRentalApplication
       'api::property-space.property-space'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    recommendation: Schema.Attribute.Text;
     status: Schema.Attribute.Enumeration<
-      ['Pending', 'Approved', 'Rejected', 'Cancelled']
+      [
+        'Pending',
+        'For Review',
+        'For Recommendation',
+        'Approved',
+        'Declined',
+        'Cancelled',
+      ]
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'Pending'>;
@@ -839,6 +1069,116 @@ export interface ApiStatusHistoryStatusHistory
   };
 }
 
+export interface ApiSystemSettingsSystemSetting
+  extends Struct.SingleTypeSchema {
+  collectionName: 'system_settings';
+  info: {
+    displayName: 'System Settings';
+    pluralName: 'system-settings';
+    singularName: 'system-setting';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    accountLockoutDurationMinutes: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<30>;
+    accountLockoutThreshold: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<5>;
+    accountLockoutWindowMinutes: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<10>;
+    backupRetentionDays: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<7>;
+    backupScheduleCron: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'0 2 * * *'>;
+    backupsEnabled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::system-settings.system-setting'
+    > &
+      Schema.Attribute.Private;
+    maintenanceBanner: Schema.Attribute.Text;
+    notificationEmailEnabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    notifyOnApplication: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    notifyOnFollowUp: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    notifyOnReceipt: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    notifyOnTicket: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    passwordMaxAgeDays: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    passwordMinLength: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 32;
+          min: 4;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<8>;
+    passwordRequireNumber: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    passwordRequireSymbol: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    passwordRequireUppercase: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    publishedAt: Schema.Attribute.DateTime;
+    systemName: Schema.Attribute.String & Schema.Attribute.DefaultTo<'iMapSU'>;
+    systemStatus: Schema.Attribute.Enumeration<
+      ['operational', 'degraded', 'maintenance']
+    > &
+      Schema.Attribute.DefaultTo<'operational'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    uploadAllowedTypes: Schema.Attribute.JSON;
+    uploadMaxFileMb: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<10>;
+  };
+}
+
 export interface ApiTenancyTenancy extends Struct.CollectionTypeSchema {
   collectionName: 'tenancies';
   info: {
@@ -861,6 +1201,10 @@ export interface ApiTenancyTenancy extends Struct.CollectionTypeSchema {
       'api::tenancy.tenancy'
     > &
       Schema.Attribute.Private;
+    meterReadings: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::meter-reading.meter-reading'
+    >;
     monthlyRent: Schema.Attribute.Decimal;
     propertySpace: Schema.Attribute.Relation<
       'manyToOne',
@@ -1391,15 +1735,21 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::announcement-acknowledgment.announcement-acknowledgment': ApiAnnouncementAcknowledgmentAnnouncementAcknowledgment;
       'api::announcement.announcement': ApiAnnouncementAnnouncement;
       'api::audit-log.audit-log': ApiAuditLogAuditLog;
       'api::bill.bill': ApiBillBill;
       'api::feedback.feedback': ApiFeedbackFeedback;
       'api::maintenance-ticket.maintenance-ticket': ApiMaintenanceTicketMaintenanceTicket;
+      'api::map-label.map-label': ApiMapLabelMapLabel;
+      'api::map-zone.map-zone': ApiMapZoneMapZone;
+      'api::meter-reading.meter-reading': ApiMeterReadingMeterReading;
+      'api::notification.notification': ApiNotificationNotification;
       'api::property-space.property-space': ApiPropertySpacePropertySpace;
       'api::renewal-intent.renewal-intent': ApiRenewalIntentRenewalIntent;
       'api::rental-application.rental-application': ApiRentalApplicationRentalApplication;
       'api::status-history.status-history': ApiStatusHistoryStatusHistory;
+      'api::system-settings.system-setting': ApiSystemSettingsSystemSetting;
       'api::tenancy.tenancy': ApiTenancyTenancy;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

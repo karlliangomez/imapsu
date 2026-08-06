@@ -1,17 +1,15 @@
 /**
  * audit-log controller
  *
- * Audit entries are written server-side by the shared audit helper and the
- * record lifecycle hooks; the REST surface is read/delete only and is
- * restricted to administrators.
+ * Audit entries are written server-side by the shared audit helper. The REST
+ * surface is read-only and restricted to administrators: audit records can be
+ * reviewed but never edited or deleted through ordinary user functions.
  */
 
 import { factories } from '@strapi/strapi';
 import { isAdmin } from '../../../utils/access';
 
-const UID = 'api::audit-log.audit-log';
-
-export default factories.createCoreController(UID, ({ strapi }) => ({
+export default factories.createCoreController('api::audit-log.audit-log', ({ strapi }) => ({
   async find(ctx) {
     const user = ctx.state.user as { id?: number } | undefined;
     if (!user) {
@@ -32,29 +30,5 @@ export default factories.createCoreController(UID, ({ strapi }) => ({
       return ctx.forbidden('Only administrators can read audit logs');
     }
     return super.findOne(ctx);
-  },
-
-  async delete(ctx) {
-    const user = ctx.state.user as { id?: number } | undefined;
-    if (!user) {
-      return ctx.unauthorized();
-    }
-    if (!isAdmin(user)) {
-      return ctx.forbidden('Only administrators can delete audit logs');
-    }
-    return super.delete(ctx);
-  },
-
-  async deleteAll(ctx) {
-    const user = ctx.state.user as { id?: number } | undefined;
-    if (!user) {
-      return ctx.unauthorized();
-    }
-    if (!isAdmin(user)) {
-      return ctx.forbidden('Only administrators can clear audit logs');
-    }
-
-    await strapi.db.query(UID).deleteMany({});
-    ctx.body = { deleted: true };
   },
 }));
