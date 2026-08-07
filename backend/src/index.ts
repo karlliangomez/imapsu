@@ -19,11 +19,6 @@ const PUBLIC_ROLES = [
     description: 'Tenant with an active contract; has access to property management features.',
   },
   {
-    type: 'field-personnel',
-    name: 'Authorized Field Personnel',
-    description: 'Records utility meter readings used to compute tenant bills.',
-  },
-  {
     type: 'oas',
     name: 'Office of Auxiliary Services',
     description: 'Staff account that manages properties, tenancies, applications, bills, announcements and service requests.',
@@ -158,8 +153,6 @@ const BUSINESS_ACTIONS = [
   'api::map-label.map-label.create',
   'api::map-label.map-label.update',
   'api::map-label.map-label.delete',
-  'plugin::upload.content-api.upload',
-  'plugin::upload.content-api.find',
 ];
 
 // OAS must never manage existing users: account creation (tenancy flow) only.
@@ -208,6 +201,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'api::feedback.feedback.find',
     'api::feedback.feedback.findOne',
     'api::feedback.feedback.create',
+    // Profile photo uploads for the student's own account.
+    'plugin::upload.content-api.upload',
     ...ANNOUNCEMENT_ACK_USER_ACTIONS,
     ...NOTIFICATION_USER_ACTIONS,
   ],
@@ -251,23 +246,6 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'plugin::upload.content-api.upload',
     ...ANNOUNCEMENT_ACK_USER_ACTIONS,
     ...NOTIFICATION_USER_ACTIONS,
-  ],
-  'field-personnel': [
-    'api::auth.auth.me',
-    'api::auth.auth.updateAccount',
-    ...PROPERTY_READ,
-    ...ANNOUNCEMENT_READ,
-    ...MAP_ZONE_READ,
-    ...MAP_LABEL_READ,
-    ...ANNOUNCEMENT_ACK_USER_ACTIONS,
-    // Tenancies are listed so field personnel can record readings for the
-    // right contract; the tenant-facing fields are not editable.
-    'api::tenancy.tenancy.find',
-    'api::tenancy.tenancy.findOne',
-    // Record and review their own utility meter readings.
-    'api::meter-reading.meter-reading.find',
-    'api::meter-reading.meter-reading.findOne',
-    'api::meter-reading.meter-reading.create',
   ],
   oas: [
     'api::auth.auth.me',
@@ -348,6 +326,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   admin: [
     'api::auth.auth.me',
     'api::auth.auth.updateAccount',
+    // Profile photo uploads for the administrator's own account.
+    'plugin::upload.content-api.upload',
     // User management (list, inspect, create, edit, block/unblock, delete).
     'api::auth.auth.createUserByStaff',
     'plugin::users-permissions.user.find',

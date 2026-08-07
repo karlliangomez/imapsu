@@ -6,7 +6,7 @@ import type { MapProperty } from '~/types/map'
 // on the property page yet.
 export const MAP_STATUS_COLORS = {
   vacant: '#22c55e',
-  occupied: '#ef4444',
+  occupied: '#b84034',
   unlisted: '#d4af37'
 } as const
 

@@ -152,7 +152,7 @@ const cards = computed(() => [
   { label: 'Occupied spaces', value: occupiedSpaces.value, icon: 'i-lucide-building-2', to: '/admin/properties', accent: 'bg-maroon-100 text-maroon-800', sub: `${vacantSpaces.value} vacant` },
   { label: 'Pending applications', value: pendingApplications.value, icon: 'i-lucide-file-text', to: '/admin/applications', accent: 'bg-gold-100 text-gold-700', sub: `${applications.value.length} total` },
   { label: 'Receipts for verification', value: bills.value.filter(bill => bill.status === 'For Verification').length, icon: 'i-lucide-shield-check', to: '/admin/bills', accent: 'bg-gold-50 text-gold-700', sub: 'awaiting review' },
-  { label: 'Overdue accounts', value: overdueAccounts.value, icon: 'i-lucide-alert-triangle', to: '/admin/bills', accent: 'bg-red-50 text-red-600', sub: `${formatCurrency(overdueTotal)} due` },
+  { label: 'Overdue accounts', value: overdueAccounts.value, icon: 'i-lucide-alert-triangle', to: '/admin/bills', accent: 'bg-maroon-50 text-maroon-700', sub: `${formatCurrency(overdueTotal)} due` },
   { label: 'Active maintenance tickets', value: activeTickets.value, icon: 'i-lucide-wrench', to: '/admin/maintenance', accent: 'bg-maroon-50 text-maroon-800', sub: `${tickets.value.length} total` },
   { label: 'Unreviewed feedback', value: unreviewedFeedback.value, icon: 'i-lucide-message-square', to: '/admin/feedback', accent: 'bg-gold-100 text-gold-700', sub: 'needs action' },
   { label: 'Utility submissions', value: utilitySubmissions.value, icon: 'i-lucide-gauge', to: '/admin/bills', accent: 'bg-maroon-100 text-maroon-800', sub: 'meter readings' },

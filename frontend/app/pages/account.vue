@@ -1,4 +1,6 @@
 ﻿<script setup lang="ts">
+import type { StrapiFile } from '~/types/auth'
+
 definePageMeta({
   middleware: 'auth'
 })
@@ -6,6 +8,45 @@ definePageMeta({
 useHead({ title: 'My account | iMapSU' })
 
 const auth = useAuth()
+const { $api, getErrorMessage } = useStrapi()
+const toast = useToast()
+
+const profileForm = reactive({
+  fullName: '',
+  contactNumber: '',
+  bio: ''
+})
+
+const employeeForm = reactive({
+  position: '',
+  department: '',
+  employeeId: '',
+  officeLocation: ''
+})
+
+const savingProfile = ref(false)
+const profileError = ref('')
+const savingEmployee = ref(false)
+const employeeError = ref('')
+const uploadingAvatar = ref(false)
+const avatarError = ref('')
+const avatarInput = ref<HTMLInputElement | null>(null)
+
+const isStaff = computed(() => auth.isOas.value || auth.isAdmin.value)
+
+const applyUserToForms = () => {
+  const u = auth.user.value
+  if (!u) return
+  profileForm.fullName = u.fullName ?? ''
+  profileForm.contactNumber = u.contactNumber ?? ''
+  profileForm.bio = u.bio ?? ''
+  employeeForm.position = u.position ?? ''
+  employeeForm.department = u.department ?? ''
+  employeeForm.employeeId = u.employeeId ?? ''
+  employeeForm.officeLocation = u.officeLocation ?? ''
+}
+
+watch(() => auth.user.value, () => applyUserToForms(), { immediate: true })
 
 const openAccountSettings = () => {
   useState('account-settings-open').value = true
@@ -45,6 +86,84 @@ const roleColor = computed(() => {
   }
 })
 
+const saveProfile = async () => {
+  profileError.value = ''
+  savingProfile.value = true
+  try {
+    await $api('/api/auth/account', {
+      method: 'PUT',
+      body: { ...profileForm }
+    })
+    await auth.refreshMe()
+    toast.add({ title: 'Profile updated', color: 'success', icon: 'i-lucide-check-circle' })
+  } catch (err) {
+    profileError.value = getErrorMessage(err)
+  } finally {
+    savingProfile.value = false
+  }
+}
+
+const saveEmployee = async () => {
+  employeeError.value = ''
+  savingEmployee.value = true
+  try {
+    await $api('/api/auth/account', {
+      method: 'PUT',
+      body: { ...employeeForm }
+    })
+    await auth.refreshMe()
+    toast.add({ title: 'Employee details updated', color: 'success', icon: 'i-lucide-check-circle' })
+  } catch (err) {
+    employeeError.value = getErrorMessage(err)
+  } finally {
+    savingEmployee.value = false
+  }
+}
+
+const triggerAvatarPicker = () => {
+  avatarError.value = ''
+  avatarInput.value?.click()
+}
+
+const onAvatarSelected = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  avatarError.value = ''
+  if (!file.type.startsWith('image/')) {
+    avatarError.value = 'Please choose an image file.'
+    return
+  }
+  uploadingAvatar.value = true
+  try {
+    const form = new FormData()
+    form.append('files', file)
+    const uploaded = await $api<StrapiFile[]>('/api/upload', { method: 'POST', body: form })
+    await $api('/api/auth/account', { method: 'PUT', body: { avatar: uploaded[0].id } })
+    await auth.refreshMe()
+    toast.add({ title: 'Profile photo updated', color: 'success', icon: 'i-lucide-check-circle' })
+  } catch (err) {
+    avatarError.value = getErrorMessage(err)
+  } finally {
+    uploadingAvatar.value = false
+    input.value = ''
+  }
+}
+
+const removeAvatar = async () => {
+  avatarError.value = ''
+  uploadingAvatar.value = true
+  try {
+    await $api('/api/auth/account', { method: 'PUT', body: { avatar: null } })
+    await auth.refreshMe()
+    toast.add({ title: 'Profile photo removed', color: 'neutral', icon: 'i-lucide-check-circle' })
+  } catch (err) {
+    avatarError.value = getErrorMessage(err)
+  } finally {
+    uploadingAvatar.value = false
+  }
+}
+
 const upcomingFeatures = computed(() => {
   const features: { icon: string; title: string; description: string; to?: string }[] = []
 
@@ -75,7 +194,7 @@ const upcomingFeatures = computed(() => {
       <div>
         <p class="imapsu-page-eyebrow mb-2">Your account</p>
         <h1 class="imapsu-page-heading">My account</h1>
-        <p class="mt-2 max-w-xl text-muted">Manage your iMapSU profile and access role-specific features.</p>
+        <p class="mt-2 max-w-xl text-muted">Manage your profile and access role-specific features.</p>
       </div>
     </div>
 
@@ -85,47 +204,115 @@ const upcomingFeatures = computed(() => {
           <h2 class="text-lg font-semibold text-highlighted">Profile</h2>
         </template>
 
-        <dl class="space-y-4 text-sm">
-          <div>
-            <dt class="mb-1 text-xs text-muted">Username</dt>
-            <dd class="font-medium text-highlighted">{{ auth.user.value?.username }}</dd>
+        <div class="flex flex-col items-center gap-4">
+          <UAvatar
+            :src="auth.avatarUrl.value ?? undefined"
+            :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()"
+            :alt="auth.displayName.value"
+            size="2xl"
+            color="primary"
+          />
+          <div class="text-center">
+            <p class="font-semibold text-highlighted">{{ auth.displayName.value }}</p>
+            <p class="text-sm text-muted">@{{ auth.user.value?.username }}</p>
           </div>
-          <div>
-            <dt class="mb-1 text-xs text-muted">Email</dt>
-            <dd class="font-medium text-highlighted">{{ auth.user.value?.email }}</dd>
+          <UBadge :color="roleColor" variant="subtle">{{ roleLabel }}</UBadge>
+
+          <div class="flex flex-wrap justify-center gap-2">
+            <UButton :loading="uploadingAvatar" color="neutral" variant="outline" icon="i-lucide-camera" label="Upload photo" size="sm" @click="triggerAvatarPicker" />
+            <UButton v-if="auth.user.value?.avatar" :loading="uploadingAvatar" color="neutral" variant="ghost" icon="i-lucide-trash-2" label="Remove" size="sm" @click="removeAvatar" />
           </div>
-          <div>
-            <dt class="mb-1 text-xs text-muted">Role</dt>
-            <dd>
-              <UBadge :color="roleColor" variant="subtle">{{ roleLabel }}</UBadge>
-            </dd>
-          </div>
-        </dl>
+          <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="onAvatarSelected" />
+          <UAlert v-if="avatarError" color="error" icon="i-lucide-circle-alert" :description="avatarError" />
+        </div>
       </UCard>
 
       <UCard class="lg:col-span-2">
         <template #header>
-          <h2 class="text-lg font-semibold text-highlighted">Available features</h2>
+          <h2 class="text-lg font-semibold text-highlighted">Profile details</h2>
         </template>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-          <NuxtLink
-            v-for="feature in upcomingFeatures"
-            :key="feature.title"
-            :to="feature.to"
-            class="group rounded-lg border border-default bg-muted/20 p-4 transition-colors"
-            :class="feature.to ? 'hover:border-primary/40 hover:bg-primary/5' : 'cursor-default'"
-          >
-            <UIcon :name="feature.icon" class="mb-3 size-5 text-primary" />
-            <h3 class="flex items-center gap-1.5 font-medium text-highlighted">
-              {{ feature.title }}
-              <UIcon v-if="feature.to" name="i-lucide-arrow-right" class="size-3.5 text-muted transition-transform group-hover:translate-x-0.5" />
-            </h3>
-            <p class="mt-1 text-sm text-muted">{{ feature.description }}</p>
-          </NuxtLink>
-        </div>
+        <form class="space-y-4" @submit.prevent="saveProfile">
+          <UFormField label="Full name" name="fullName">
+            <UInput v-model="profileForm.fullName" placeholder="Your full name" :disabled="savingProfile" />
+          </UFormField>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <UFormField label="Contact number" name="contactNumber">
+              <UInput v-model="profileForm.contactNumber" placeholder="e.g. 0917 000 0000" :disabled="savingProfile" />
+            </UFormField>
+            <UFormField label="Email" name="email" hint="Managed by an administrator">
+              <UInput :model-value="auth.user.value?.email" disabled />
+            </UFormField>
+          </div>
+
+          <UFormField label="Bio" name="bio">
+            <UTextarea v-model="profileForm.bio" placeholder="Tell us a little about yourself" :disabled="savingProfile" />
+          </UFormField>
+
+          <UAlert v-if="profileError" color="error" icon="i-lucide-circle-alert" :description="profileError" />
+
+          <div class="flex justify-end">
+            <UButton type="submit" :loading="savingProfile">Save profile</UButton>
+          </div>
+        </form>
       </UCard>
     </div>
+
+    <UCard v-if="isStaff" class="mt-6">
+      <template #header>
+        <h2 class="text-lg font-semibold text-highlighted">Employee details</h2>
+      </template>
+
+      <form class="space-y-4" @submit.prevent="saveEmployee">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <UFormField label="Position" name="position">
+            <UInput v-model="employeeForm.position" placeholder="e.g. Campus Property Officer" :disabled="savingEmployee" />
+          </UFormField>
+          <UFormField label="Department" name="department">
+            <UInput v-model="employeeForm.department" placeholder="e.g. Office of Auxiliary Services" :disabled="savingEmployee" />
+          </UFormField>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <UFormField label="Employee ID" name="employeeId">
+            <UInput v-model="employeeForm.employeeId" placeholder="e.g. OAS-2026-014" :disabled="savingEmployee" />
+          </UFormField>
+          <UFormField label="Office location" name="officeLocation">
+            <UInput v-model="employeeForm.officeLocation" placeholder="e.g. Admin Building, Room 204" :disabled="savingEmployee" />
+          </UFormField>
+        </div>
+
+        <UAlert v-if="employeeError" color="error" icon="i-lucide-circle-alert" :description="employeeError" />
+
+        <div class="flex justify-end">
+          <UButton type="submit" :loading="savingEmployee">Save employee details</UButton>
+        </div>
+      </form>
+    </UCard>
+
+    <UCard class="mt-6">
+      <template #header>
+        <h2 class="text-lg font-semibold text-highlighted">Available features</h2>
+      </template>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <NuxtLink
+          v-for="feature in upcomingFeatures"
+          :key="feature.title"
+          :to="feature.to"
+          class="group rounded-lg border border-default bg-muted/20 p-4 transition-colors"
+          :class="feature.to ? 'hover:border-primary/40 hover:bg-primary/5' : 'cursor-default'"
+        >
+          <UIcon :name="feature.icon" class="mb-3 size-5 text-primary" />
+          <h3 class="flex items-center gap-1.5 font-medium text-highlighted">
+            {{ feature.title }}
+            <UIcon v-if="feature.to" name="i-lucide-arrow-right" class="size-3.5 text-muted transition-transform group-hover:translate-x-0.5" />
+          </h3>
+          <p class="mt-1 text-sm text-muted">{{ feature.description }}</p>
+        </NuxtLink>
+      </div>
+    </UCard>
 
     <UCard class="mt-6">
       <template #header>

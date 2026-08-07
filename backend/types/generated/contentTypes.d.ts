@@ -1683,28 +1683,36 @@ export interface PluginUsersPermissionsUser
     timestamps: true;
   };
   attributes: {
+    avatar: Schema.Attribute.Media;
+    bio: Schema.Attribute.Text;
     blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     confirmationToken: Schema.Attribute.String & Schema.Attribute.Private;
     confirmed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    contactNumber: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    department: Schema.Attribute.String;
     email: Schema.Attribute.Email &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    employeeId: Schema.Attribute.String;
+    fullName: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'plugin::users-permissions.user'
     > &
       Schema.Attribute.Private;
+    officeLocation: Schema.Attribute.String;
     password: Schema.Attribute.Password &
       Schema.Attribute.Private &
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    position: Schema.Attribute.String;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;

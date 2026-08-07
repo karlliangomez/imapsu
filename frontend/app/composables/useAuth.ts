@@ -13,11 +13,18 @@ export const useAuth = () => {
 
   const isAuthenticated = computed(() => !!user.value)
   const role = computed(() => user.value?.role?.type ?? null)
+  const displayName = computed(() => user.value?.fullName || user.value?.username || 'Account')
+
+  const avatarUrl = computed<string | null>(() => {
+    const url = user.value?.avatar?.url
+    if (!url) return null
+    if (url.startsWith('http')) return url
+    return `${config.public.strapiUrl}${url}`
+  })
 
   const isStudent = computed(() => role.value === 'student')
   const isAspiringTenant = computed(() => role.value === 'aspiring-tenant')
   const isCurrentTenant = computed(() => role.value === 'current-tenant')
-  const isFieldPersonnel = computed(() => role.value === 'field-personnel')
   const isOas = computed(() => role.value === 'oas')
   const isAdmin = computed(() => role.value === 'admin')
   const isStaff = computed(() => isOas.value || isAdmin.value)
@@ -82,10 +89,11 @@ export const useAuth = () => {
     loading,
     isAuthenticated,
     role,
+    displayName,
+    avatarUrl,
     isStudent,
     isAspiringTenant,
     isCurrentTenant,
-    isFieldPersonnel,
     isOas,
     isAdmin,
     isStaff,

@@ -8,6 +8,17 @@ export interface UserRole {
   type: UserRoleType
 }
 
+export interface StrapiFile {
+  id: number
+  documentId?: string
+  name: string
+  url: string
+  mime?: string
+  size?: number
+  width?: number
+  height?: number
+}
+
 export interface User {
   id: number
   documentId?: string
@@ -16,6 +27,14 @@ export interface User {
   confirmed?: boolean
   blocked?: boolean
   role?: UserRole | null
+  fullName?: string | null
+  contactNumber?: string | null
+  position?: string | null
+  department?: string | null
+  employeeId?: string | null
+  officeLocation?: string | null
+  bio?: string | null
+  avatar?: StrapiFile | null
   createdAt?: string
   updatedAt?: string
 }

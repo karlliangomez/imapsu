@@ -11,8 +11,8 @@ export const useStrapi = () => {
   const $api = async <T>(path: string, options: Parameters<typeof $fetch<T>>[1] = {}) => {
     return $fetch<T>(path, {
       baseURL,
-      headers: authHeaders.value,
-      ...options
+      ...options,
+      headers: { ...authHeaders.value, ...(options.headers ?? {}) }
     })
   }
 

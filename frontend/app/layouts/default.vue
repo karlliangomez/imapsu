@@ -7,6 +7,7 @@ const toast = useToast()
 
 const isDark = computed(() => colorMode.value === 'dark')
 const isStandalonePage = computed(() => ['/login', '/register'].includes(route.path))
+const isMapPage = computed(() => route.path === '/campus-map')
 const drawerOpen = ref(false)
 
 const accountOpen = useState('account-settings-open', () => false)
@@ -84,6 +85,14 @@ function toggleSidebar() {
 const userItems = computed(() => {
   const items: Record<string, unknown>[] = [
     {
+      type: 'label',
+      label: auth.displayName.value,
+      avatar: {
+        src: auth.avatarUrl.value ?? undefined,
+        text: (auth.displayName.value ?? '?').charAt(0).toUpperCase()
+      }
+    },
+    {
       label: 'Account settings',
       icon: 'i-lucide-settings',
       onSelect: openAccountSettings
@@ -95,14 +104,6 @@ const userItems = computed(() => {
     }
   ]
 
-  if (auth.isStaff.value) {
-    items.push({
-      label: 'Management',
-      icon: 'i-lucide-layout-dashboard',
-      onSelect: () => navigateTo('/admin')
-    })
-  }
-
   items.push({ type: 'separator' })
   items.push({
     label: 'Sign out',
@@ -113,15 +114,7 @@ const userItems = computed(() => {
     }
   })
 
-  return [
-    {
-      label: auth.user.value?.username ?? 'Account',
-      avatar: {
-        label: (auth.user.value?.username ?? '?').charAt(0).toUpperCase()
-      },
-      items
-    }
-  ]
+  return [items]
 })
 </script>
 
@@ -129,7 +122,7 @@ const userItems = computed(() => {
   <div class="imapsu-page-bg min-h-screen">
     <div class="flex items-stretch">
       <aside
-        v-if="!isStandalonePage"
+        v-if="!isStandalonePage && !isMapPage"
         class="sticky top-0 z-30 hidden h-screen shrink-0 flex-col overflow-hidden border-r border-maroon-950 bg-maroon-800 transition-[width] duration-200 ease-in-out lg:flex"
         :class="sidebarCollapsed ? 'w-16' : 'w-64'"
       >
@@ -161,16 +154,16 @@ const userItems = computed(() => {
         <div v-if="auth.isAuthenticated.value" class="border-t border-maroon-950/60 px-3 py-3">
           <div v-if="!sidebarCollapsed" class="space-y-3">
             <div class="flex items-center gap-3">
-              <UAvatar :label="(auth.user.value?.username ?? '?').charAt(0).toUpperCase()" :alt="auth.user.value?.username" size="sm" />
+              <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="sm" />
               <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-white">{{ auth.user.value?.username }}</p>
+                <p class="truncate text-sm font-semibold text-white">{{ auth.displayName.value }}</p>
                 <p v-if="auth.user.value?.email" class="truncate text-xs text-maroon-200">{{ auth.user.value.email }}</p>
               </div>
             </div>
             <UButton block variant="subtle" color="error" icon="i-lucide-log-out" label="Sign out" @click="auth.logout(); navigateTo('/')" />
           </div>
           <div v-else class="flex flex-col items-center gap-3">
-            <UAvatar :label="(auth.user.value?.username ?? '?').charAt(0).toUpperCase()" :alt="auth.user.value?.username" size="sm" :title="auth.user.value?.username" />
+            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="sm" :title="auth.displayName.value" />
             <UButton square variant="ghost" color="error" icon="i-lucide-log-out" aria-label="Sign out" :title="'Sign out'" class="text-maroon-100 hover:bg-white/10 hover:text-white" @click="auth.logout(); navigateTo('/')" />
           </div>
         </div>
@@ -181,7 +174,7 @@ const userItems = computed(() => {
           <div class="imapsu-brand-bar h-1" />
           <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
             <div class="flex items-center gap-2">
-              <UButton v-if="!isStandalonePage" class="lg:hidden" color="neutral" variant="ghost" square icon="i-lucide-menu" :aria-label="'Open navigation'" @click="drawerOpen = true" />
+              <UButton v-if="!isStandalonePage" :class="isMapPage ? '' : 'lg:hidden'" color="neutral" variant="ghost" square icon="i-lucide-menu" :aria-label="'Open navigation'" @click="drawerOpen = true" />
               <NuxtLink to="/" class="flex items-center gap-2.5 font-semibold tracking-tight">
                 <span class="imapsu-brand-tile grid size-8 place-items-center rounded-lg shadow-sm">
                   <UIcon name="i-lucide-map" class="size-4" />
@@ -232,13 +225,12 @@ const userItems = computed(() => {
       <template #footer>
         <div v-if="auth.isAuthenticated.value" class="space-y-3">
           <div class="flex items-center gap-3">
-            <UAvatar :label="(auth.user.value?.username ?? '?').charAt(0).toUpperCase()" :alt="auth.user.value?.username" size="sm" />
+            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="sm" />
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-white">{{ auth.user.value?.username }}</p>
+              <p class="truncate text-sm font-semibold text-white">{{ auth.displayName.value }}</p>
               <p v-if="auth.user.value?.email" class="truncate text-xs text-maroon-200">{{ auth.user.value.email }}</p>
             </div>
           </div>
-          <UButton block variant="subtle" color="neutral" icon="i-lucide-settings" label="Account settings" @click="openAccountSettings" />
           <UButton block variant="subtle" color="error" icon="i-lucide-log-out" label="Sign out" @click="closeDrawer; auth.logout(); navigateTo('/')" />
         </div>
       </template>

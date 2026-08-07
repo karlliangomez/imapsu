@@ -25,8 +25,8 @@ const STAFF_CREATE_ROLES = ['student', 'aspiring-tenant', 'current-tenant'];
 const DEFAULT_STAFF_CREATE_ROLE = 'current-tenant';
 
 // Every role an administrator may create or assign. Administrators can also
-// provision OAS, field personnel and administrator accounts.
-const ALL_ROLES = ['student', 'aspiring-tenant', 'current-tenant', 'field-personnel', 'oas', 'admin'];
+// provision OAS and administrator accounts.
+const ALL_ROLES = ['student', 'aspiring-tenant', 'current-tenant', 'oas', 'admin'];
 
 // The roles an administrator may manage on the role & permissions page.
 // The built-in `public` and `authenticated` roles are intentionally excluded.
@@ -194,6 +194,27 @@ OAS_LOCKED_ACTIONS.add('api::status-history.status-history.find');
 async function sanitizeUser(user: unknown) {
   const schema = strapi.getModel(USER_MODEL_UID);
   return strapi.contentAPI.sanitize.output(user, schema, { auth: null });
+}
+
+// Employee-detail fields that only staff (OAS members and administrators) may
+// set on their own account through the self-service profile endpoint.
+const EMPLOYEE_FIELDS = ['position', 'department', 'employeeId', 'officeLocation'];
+const EMPLOYEE_LABELS: Record<string, string> = {
+  position: 'Position',
+  department: 'Department',
+  employeeId: 'Employee ID',
+  officeLocation: 'Office location',
+};
+
+// Load the caller's own profile (role + avatar populated) and sanitize it for
+// the response. Used by `me` and after any self-service account update so the
+// client always receives a fresh copy of the account.
+async function fetchUserProfile(userId: number) {
+  const user = await strapi.db.query(USER_MODEL_UID).findOne({
+    where: { id: userId },
+    populate: { role: true, avatar: true },
+  });
+  return sanitizeUser(user);
 }
 
 // Password policy is driven by the persisted system settings so an
@@ -408,18 +429,12 @@ export default {
       return ctx.unauthorized();
     }
 
-    const user = await strapi
-      .plugin('users-permissions')
-      .service('user')
-      .fetchAuthenticatedUser(authUser.id);
-
-    const schema = strapi.getModel(USER_MODEL_UID);
-    ctx.body = await strapi.contentAPI.sanitize.output(user, schema, {
-      auth: null,
-    });
+    ctx.body = await fetchUserProfile(authUser.id);
   },
 
-  // Self-service: a signed-in user changes their own password. Username and
+  // Self-service: a signed-in user updates their own profile. Everyone can
+  // change their password and their shared profile fields (full name, contact
+  // number, bio, avatar); only staff may set employee details. Username and
   // email are administrator-managed and must be changed through the admin
   // user directory (`/api/users/:id`) instead.
   async updateAccount(ctx: any) {
@@ -452,12 +467,60 @@ export default {
         throw new ValidationError('Current password is incorrect');
       }
 
-      const updated = await userService.edit(authUser.id, { password: String(body.newPassword) });
-      ctx.body = await sanitizeUser(updated);
+      await userService.edit(authUser.id, { password: String(body.newPassword) });
+      ctx.body = await fetchUserProfile(authUser.id);
       return;
     }
 
-    throw new ValidationError('Nothing to update');
+    const patch: Record<string, unknown> = {};
+    const staff = isStaff(authUser);
+
+    const sharedText: Record<string, string> = {
+      fullName: 'Full name',
+      contactNumber: 'Contact number',
+      bio: 'Bio',
+    };
+    for (const [key, label] of Object.entries(sharedText)) {
+      if (body[key] !== undefined) {
+        if (body[key] !== null && typeof body[key] !== 'string') {
+          throw new ValidationError(`${label} must be text`);
+        }
+        const value = body[key] === null ? null : String(body[key]).trim();
+        patch[key] = value === '' ? null : value;
+      }
+    }
+
+    for (const key of EMPLOYEE_FIELDS) {
+      if (body[key] !== undefined) {
+        if (!staff) {
+          throw new ValidationError('Only Office of Auxiliary Services staff can update employee details');
+        }
+        if (body[key] !== null && typeof body[key] !== 'string') {
+          throw new ValidationError(`${EMPLOYEE_LABELS[key] ?? key} must be text`);
+        }
+        const value = body[key] === null ? null : String(body[key]).trim();
+        patch[key] = value === '' ? null : value;
+      }
+    }
+
+    if (body.avatar !== undefined) {
+      if (body.avatar === null) {
+        patch.avatar = null;
+      } else {
+        const avatarId = Number(body.avatar);
+        if (!Number.isInteger(avatarId) || avatarId <= 0) {
+          throw new ValidationError('Invalid avatar file');
+        }
+        patch.avatar = avatarId;
+      }
+    }
+
+    if (Object.keys(patch).length === 0) {
+      throw new ValidationError('Nothing to update');
+    }
+
+    await userService.edit(authUser.id, patch);
+    ctx.body = await fetchUserProfile(authUser.id);
   },
 
   // Staff-only directory: users together with their role type. The standard

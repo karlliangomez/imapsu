@@ -767,8 +767,8 @@ defineExpose({ resetCamera })
 }
 
 .campus-map-label-status.is-occupied {
-  background: rgba(239, 68, 68, 0.22);
-  border: 1px solid rgba(239, 68, 68, 0.7);
-  color: #f87171;
+  background: rgba(184, 64, 52, 0.22);
+  border: 1px solid rgba(184, 64, 52, 0.7);
+  color: #e4857b;
 }
 </style>
