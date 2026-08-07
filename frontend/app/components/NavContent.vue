@@ -102,7 +102,7 @@ const iconClasses = () => ['imapsu-nav-icon size-4.5']
 <template>
   <div class="space-y-6">
     <div>
-      <p v-if="!collapsed" class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-maroon-200">General</p>
+      <p v-if="!collapsed" class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gold-200">General</p>
       <div class="space-y-0.5">
         <NuxtLink v-for="link in generalLinks" :key="link.to" :to="link.to" :class="linkClasses(link.to)" :title="collapsed ? link.label : undefined" @click="onNavigate?.()">
           <UIcon :name="link.icon" :class="iconClasses(link.to)" />
@@ -112,7 +112,7 @@ const iconClasses = () => ['imapsu-nav-icon size-4.5']
     </div>
 
     <div v-for="section in roleLinks" :key="section.label">
-      <p v-if="!collapsed" class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-maroon-200">{{ section.label }}</p>
+      <p v-if="!collapsed" class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gold-200">{{ section.label }}</p>
       <div class="space-y-0.5">
         <NuxtLink v-for="link in section.links" :key="link.to" :to="link.to" :class="linkClasses(link.to)" :title="collapsed ? link.label : undefined" @click="onNavigate?.()">
           <UIcon :name="link.icon" :class="iconClasses(link.to)" />

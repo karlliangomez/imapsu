@@ -13,146 +13,149 @@ type RoleInfo = {
   permissions: string[]
 }
 
+type PermissionItem = { action: string; label: string }
+type CatalogSection = { label: string; permissions: PermissionItem[] }
+
 // Mirrors the backend permission catalog. The admin toggles these curated
 // actions; protected essentials (me/updateAccount) are never shown as removable.
-const PERMISSION_CATALOG = [
+const PERMISSION_CATALOG: CatalogSection[] = [
   {
     label: 'Announcements',
-    actions: [
-      'api::announcement.announcement.find',
-      'api::announcement.announcement.findOne',
-      'api::announcement.announcement.create',
-      'api::announcement.announcement.update',
-      'api::announcement.announcement.delete'
+    permissions: [
+      { action: 'api::announcement.announcement.find', label: 'View announcements' },
+      { action: 'api::announcement.announcement.findOne', label: 'View one announcement' },
+      { action: 'api::announcement.announcement.create', label: 'Create announcements' },
+      { action: 'api::announcement.announcement.update', label: 'Update announcements' },
+      { action: 'api::announcement.announcement.delete', label: 'Delete announcements' }
     ]
   },
   {
     label: 'Properties',
-    actions: [
-      'api::property-space.property-space.find',
-      'api::property-space.property-space.findOne',
-      'api::property-space.property-space.create',
-      'api::property-space.property-space.update',
-      'api::property-space.property-space.delete'
+    permissions: [
+      { action: 'api::property-space.property-space.find', label: 'View properties' },
+      { action: 'api::property-space.property-space.findOne', label: 'View one property' },
+      { action: 'api::property-space.property-space.create', label: 'Create properties' },
+      { action: 'api::property-space.property-space.update', label: 'Update properties' },
+      { action: 'api::property-space.property-space.delete', label: 'Delete properties' }
     ]
   },
   {
     label: 'Rental applications',
-    actions: [
-      'api::rental-application.rental-application.find',
-      'api::rental-application.rental-application.findOne',
-      'api::rental-application.rental-application.create',
-      'api::rental-application.rental-application.update',
-      'api::rental-application.rental-application.delete'
+    permissions: [
+      { action: 'api::rental-application.rental-application.find', label: 'View rental applications' },
+      { action: 'api::rental-application.rental-application.findOne', label: 'View one rental application' },
+      { action: 'api::rental-application.rental-application.create', label: 'Create rental applications' },
+      { action: 'api::rental-application.rental-application.update', label: 'Update rental applications' },
+      { action: 'api::rental-application.rental-application.delete', label: 'Delete rental applications' }
     ]
   },
   {
     label: 'Tenancies',
-    actions: [
-      'api::tenancy.tenancy.find',
-      'api::tenancy.tenancy.findOne',
-      'api::tenancy.tenancy.create',
-      'api::tenancy.tenancy.update',
-      'api::tenancy.tenancy.delete'
+    permissions: [
+      { action: 'api::tenancy.tenancy.find', label: 'View tenancies' },
+      { action: 'api::tenancy.tenancy.findOne', label: 'View one tenancy' },
+      { action: 'api::tenancy.tenancy.create', label: 'Create tenancies' },
+      { action: 'api::tenancy.tenancy.update', label: 'Update tenancies' },
+      { action: 'api::tenancy.tenancy.delete', label: 'Delete tenancies' }
     ]
   },
   {
     label: 'Bills',
-    actions: [
-      'api::bill.bill.find',
-      'api::bill.bill.findOne',
-      'api::bill.bill.create',
-      'api::bill.bill.update',
-      'api::bill.bill.delete'
+    permissions: [
+      { action: 'api::bill.bill.find', label: 'View bills' },
+      { action: 'api::bill.bill.findOne', label: 'View one bill' },
+      { action: 'api::bill.bill.create', label: 'Create bills' },
+      { action: 'api::bill.bill.update', label: 'Update bills' },
+      { action: 'api::bill.bill.delete', label: 'Delete bills' }
     ]
   },
   {
     label: 'Contract renewals',
-    actions: [
-      'api::renewal-intent.renewal-intent.find',
-      'api::renewal-intent.renewal-intent.findOne',
-      'api::renewal-intent.renewal-intent.create',
-      'api::renewal-intent.renewal-intent.update',
-      'api::renewal-intent.renewal-intent.delete'
+    permissions: [
+      { action: 'api::renewal-intent.renewal-intent.find', label: 'View contract renewals' },
+      { action: 'api::renewal-intent.renewal-intent.findOne', label: 'View one contract renewal' },
+      { action: 'api::renewal-intent.renewal-intent.create', label: 'Create contract renewals' },
+      { action: 'api::renewal-intent.renewal-intent.update', label: 'Update contract renewals' },
+      { action: 'api::renewal-intent.renewal-intent.delete', label: 'Delete contract renewals' }
     ]
   },
   {
     label: 'Maintenance tickets',
-    actions: [
-      'api::maintenance-ticket.maintenance-ticket.find',
-      'api::maintenance-ticket.maintenance-ticket.findOne',
-      'api::maintenance-ticket.maintenance-ticket.create',
-      'api::maintenance-ticket.maintenance-ticket.update',
-      'api::maintenance-ticket.maintenance-ticket.delete',
-      'api::maintenance-ticket.maintenance-ticket.followUp'
+    permissions: [
+      { action: 'api::maintenance-ticket.maintenance-ticket.find', label: 'View maintenance tickets' },
+      { action: 'api::maintenance-ticket.maintenance-ticket.findOne', label: 'View one maintenance ticket' },
+      { action: 'api::maintenance-ticket.maintenance-ticket.create', label: 'Create maintenance tickets' },
+      { action: 'api::maintenance-ticket.maintenance-ticket.update', label: 'Update maintenance tickets' },
+      { action: 'api::maintenance-ticket.maintenance-ticket.delete', label: 'Delete maintenance tickets' },
+      { action: 'api::maintenance-ticket.maintenance-ticket.followUp', label: 'Follow up on maintenance tickets' }
     ]
   },
   {
     label: 'Notifications',
-    actions: [
-      'api::notification.notification.find',
-      'api::notification.notification.unreadCount',
-      'api::notification.notification.markRead',
-      'api::notification.notification.markAllRead'
+    permissions: [
+      { action: 'api::notification.notification.find', label: 'View notifications' },
+      { action: 'api::notification.notification.unreadCount', label: 'View unread notification count' },
+      { action: 'api::notification.notification.markRead', label: 'Mark notifications as read' },
+      { action: 'api::notification.notification.markAllRead', label: 'Mark all notifications as read' }
     ]
   },
   {
     label: 'Meter readings',
-    actions: [
-      'api::meter-reading.meter-reading.find',
-      'api::meter-reading.meter-reading.findOne',
-      'api::meter-reading.meter-reading.create',
-      'api::meter-reading.meter-reading.update',
-      'api::meter-reading.meter-reading.delete'
+    permissions: [
+      { action: 'api::meter-reading.meter-reading.find', label: 'View meter readings' },
+      { action: 'api::meter-reading.meter-reading.findOne', label: 'View one meter reading' },
+      { action: 'api::meter-reading.meter-reading.create', label: 'Create meter readings' },
+      { action: 'api::meter-reading.meter-reading.update', label: 'Update meter readings' },
+      { action: 'api::meter-reading.meter-reading.delete', label: 'Delete meter readings' }
     ]
   },
   {
     label: 'Announcement acknowledgments',
-    actions: [
-      'api::announcement-acknowledgment.announcement-acknowledgment.find',
-      'api::announcement-acknowledgment.announcement-acknowledgment.findOne',
-      'api::announcement-acknowledgment.announcement-acknowledgment.create',
-      'api::announcement-acknowledgment.announcement-acknowledgment.update',
-      'api::announcement-acknowledgment.announcement-acknowledgment.delete'
+    permissions: [
+      { action: 'api::announcement-acknowledgment.announcement-acknowledgment.find', label: 'View acknowledgments' },
+      { action: 'api::announcement-acknowledgment.announcement-acknowledgment.findOne', label: 'View one acknowledgment' },
+      { action: 'api::announcement-acknowledgment.announcement-acknowledgment.create', label: 'Create acknowledgments' },
+      { action: 'api::announcement-acknowledgment.announcement-acknowledgment.update', label: 'Update acknowledgments' },
+      { action: 'api::announcement-acknowledgment.announcement-acknowledgment.delete', label: 'Delete acknowledgments' }
     ]
   },
   {
     label: 'Feedback',
-    actions: [
-      'api::feedback.feedback.find',
-      'api::feedback.feedback.findOne',
-      'api::feedback.feedback.create',
-      'api::feedback.feedback.update'
+    permissions: [
+      { action: 'api::feedback.feedback.find', label: 'View feedback' },
+      { action: 'api::feedback.feedback.findOne', label: 'View one feedback entry' },
+      { action: 'api::feedback.feedback.create', label: 'Submit feedback' },
+      { action: 'api::feedback.feedback.update', label: 'Update feedback' }
     ]
   },
   {
     label: 'Campus map',
-    actions: [
-      'api::map-zone.map-zone.find',
-      'api::map-zone.map-zone.findOne',
-      'api::map-zone.map-zone.create',
-      'api::map-zone.map-zone.update',
-      'api::map-zone.map-zone.delete'
+    permissions: [
+      { action: 'api::map-zone.map-zone.find', label: 'View map zones' },
+      { action: 'api::map-zone.map-zone.findOne', label: 'View one map zone' },
+      { action: 'api::map-zone.map-zone.create', label: 'Create map zones' },
+      { action: 'api::map-zone.map-zone.update', label: 'Update map zones' },
+      { action: 'api::map-zone.map-zone.delete', label: 'Delete map zones' }
     ]
   },
   {
     label: 'Users',
-    actions: [
-      'plugin::users-permissions.user.find',
-      'plugin::users-permissions.user.findOne',
-      'plugin::users-permissions.user.update',
-      'plugin::users-permissions.user.destroy'
+    permissions: [
+      { action: 'plugin::users-permissions.user.find', label: 'View users' },
+      { action: 'plugin::users-permissions.user.findOne', label: 'View one user' },
+      { action: 'plugin::users-permissions.user.update', label: 'Update users' },
+      { action: 'plugin::users-permissions.user.destroy', label: 'Delete users' }
     ]
   },
   {
     label: 'File uploads',
-    actions: ['plugin::upload.content-api.upload']
+    permissions: [{ action: 'plugin::upload.content-api.upload', label: 'Upload files' }]
   }
 ]
 
 const PROTECTED_ACTIONS = new Set(['api::auth.auth.me', 'api::auth.auth.updateAccount'])
 
-const CATALOG_ACTIONS = new Set(PERMISSION_CATALOG.flatMap(section => section.actions))
+const CATALOG_ACTIONS = new Set(PERMISSION_CATALOG.flatMap(section => section.permissions.map(permission => permission.action)))
 
 const auth = useAuth()
 const toast = useToast()
@@ -246,11 +249,6 @@ const roleColor = (type: string) => {
   }
 }
 
-const actionLabel = (action: string) => {
-  const [, , name] = action.split('.')
-  const parts = name ? name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)) : [action]
-  return parts.join(' ')
-}
 </script>
 
 <template>
@@ -260,7 +258,7 @@ const actionLabel = (action: string) => {
         <p class="imapsu-page-eyebrow mb-2">Administration</p>
         <h1 class="imapsu-page-heading">Roles &amp; permissions</h1>
         <p class="mt-2 max-w-xl text-muted">
-          Toggle which content-API actions each role may perform. The essentials (sign-in, account update) are always kept on.
+          Toggle which capabilities each role has. The essentials (sign-in, account update) are always kept on.
         </p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
@@ -291,7 +289,7 @@ const actionLabel = (action: string) => {
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <span class="text-sm text-muted">{{ selectedCount(role.type) }} actions selected</span>
+              <span class="text-sm text-muted">{{ selectedCount(role.type) }} permissions selected</span>
               <UButton icon="i-lucide-save" :loading="saving === role.type" @click="save(role)">Save</UButton>
             </div>
           </div>
@@ -301,17 +299,17 @@ const actionLabel = (action: string) => {
           <div v-for="section in PERMISSION_CATALOG" :key="section.label">
             <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">{{ section.label }}</p>
             <ul class="space-y-1.5">
-              <li v-for="action in section.actions" :key="action">
+              <li v-for="permission in section.permissions" :key="permission.action">
                 <label
                   class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors hover:bg-primary/5"
-                  :class="isProtected(role, action) ? 'cursor-not-allowed opacity-50' : ''"
+                  :class="isProtected(role, permission.action) ? 'cursor-not-allowed opacity-50' : ''"
                 >
                   <UCheckbox
-                    :model-value="isChecked(role.type, action)"
-                    :disabled="isProtected(role, action)"
-                    @update:model-value="toggle(role.type, action)"
+                    :model-value="isChecked(role.type, permission.action)"
+                    :disabled="isProtected(role, permission.action)"
+                    @update:model-value="toggle(role.type, permission.action)"
                   />
-                  <span class="text-highlighted">{{ actionLabel(action) }}</span>
+                  <span class="text-highlighted">{{ permission.label }}</span>
                 </label>
               </li>
             </ul>

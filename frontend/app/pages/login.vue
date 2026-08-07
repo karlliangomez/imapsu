@@ -33,10 +33,8 @@ const handleLogin = async () => {
       <UCard :ui="{ root: 'shadow-2xl ring-1 ring-maroon-950/10', header: 'px-6 pb-4 pt-8 sm:px-8', body: 'px-6 pb-6 sm:px-8', footer: 'px-6 pb-8 sm:px-8' }">
         <template #header>
           <div class="flex flex-col items-center text-center">
-            <span class="imapsu-brand-tile mb-4 grid size-12 place-items-center rounded-xl shadow-lg">
-              <UIcon name="i-lucide-map" class="size-6" />
-            </span>
-            <h1 class="text-2xl font-bold tracking-tight text-highlighted">Sign in to iMapSU</h1>
+            <BrandLogo size="size-16" />
+            <h1 class="mt-4 text-2xl font-bold tracking-tight text-highlighted">Sign in to iMapSU</h1>
             <p class="mt-1 text-sm text-muted">Welcome back — access your campus account.</p>
           </div>
         </template>

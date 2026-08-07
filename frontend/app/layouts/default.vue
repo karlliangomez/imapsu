@@ -123,14 +123,12 @@ const userItems = computed(() => {
     <div class="flex items-stretch">
       <aside
         v-if="!isStandalonePage && !isMapPage"
-        class="sticky top-0 z-30 hidden h-screen shrink-0 flex-col overflow-hidden border-r border-maroon-950 bg-maroon-800 transition-[width] duration-200 ease-in-out lg:flex"
+        class="sticky top-0 z-30 hidden h-screen shrink-0 flex-col overflow-hidden border-r border-maroon-950 bg-gradient-to-b from-maroon-800 to-maroon-900 transition-[width] duration-200 ease-in-out lg:flex"
         :class="sidebarCollapsed ? 'w-16' : 'w-64'"
       >
         <div class="flex items-center justify-between gap-2 border-b border-maroon-950/60 px-3 py-4">
           <div class="flex min-w-0 items-center gap-2.5 overflow-hidden">
-            <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-gold-400 text-maroon-900 shadow-sm">
-              <UIcon name="i-lucide-map" class="size-5" />
-            </span>
+            <BrandLogo size="size-11" />
             <div v-if="!sidebarCollapsed" class="min-w-0">
               <p class="truncate font-semibold tracking-tight text-white">iMapSU</p>
               <p class="truncate text-xs text-maroon-200">Campus property management</p>
@@ -147,7 +145,7 @@ const userItems = computed(() => {
           </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto px-3 py-4">
+        <div class="imapsu-scrollbar-maroon flex-1 overflow-y-auto px-3 py-4">
           <NavContent :collapsed="sidebarCollapsed" />
         </div>
 
@@ -176,9 +174,7 @@ const userItems = computed(() => {
             <div class="flex items-center gap-2">
               <UButton v-if="!isStandalonePage" :class="isMapPage ? '' : 'lg:hidden'" color="neutral" variant="ghost" square icon="i-lucide-menu" :aria-label="'Open navigation'" @click="drawerOpen = true" />
               <NuxtLink to="/" class="flex items-center gap-2.5 font-semibold tracking-tight">
-                <span class="imapsu-brand-tile grid size-8 place-items-center rounded-lg shadow-sm">
-                  <UIcon name="i-lucide-map" class="size-4" />
-                </span>
+                <BrandLogo size="size-10" />
                 <span class="text-primary dark:text-secondary">iMapSU</span>
               </NuxtLink>
             </div>
@@ -205,21 +201,21 @@ const userItems = computed(() => {
       </div>
     </div>
 
-    <UDrawer v-if="!isStandalonePage" v-model:open="drawerOpen" direction="left" :ui="{ content: 'w-80 max-w-[85vw] bg-maroon-800! ring-maroon-950!', handle: '!bg-gold-400' }">
+    <UDrawer v-if="!isStandalonePage" v-model:open="drawerOpen" direction="left" :ui="{ content: 'w-80 max-w-[85vw] bg-gradient-to-b from-maroon-800 to-maroon-900 bg-maroon-800! ring-maroon-950!', handle: '!bg-gold-400' }">
       <template #header>
         <div class="flex items-center gap-2.5">
-          <span class="grid size-9 place-items-center rounded-lg bg-gold-400 text-maroon-900 shadow-sm">
-            <UIcon name="i-lucide-map" class="size-5" />
-          </span>
+          <BrandLogo size="size-11" />
           <div>
             <p class="font-semibold tracking-tight text-white">iMapSU</p>
-            <p class="text-xs text-maroon-200">Campus property management</p>
+            <p class="text-xs text-gold-200">Campus property management</p>
           </div>
         </div>
       </template>
 
       <template #body>
-        <NavContent :on-navigate="closeDrawer" />
+        <div class="imapsu-scrollbar-maroon -mx-3 px-3">
+          <NavContent :on-navigate="closeDrawer" />
+        </div>
       </template>
 
       <template #footer>

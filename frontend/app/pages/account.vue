@@ -31,6 +31,9 @@ const employeeError = ref('')
 const uploadingAvatar = ref(false)
 const avatarError = ref('')
 const avatarInput = ref<HTMLInputElement | null>(null)
+const cropModalOpen = ref(false)
+const cropSrc = ref<string | null>(null)
+const cropObjectUrl = ref<string | null>(null)
 
 const isStaff = computed(() => auth.isOas.value || auth.isAdmin.value)
 
@@ -134,10 +137,32 @@ const onAvatarSelected = async (event: Event) => {
     avatarError.value = 'Please choose an image file.'
     return
   }
+  if (cropObjectUrl.value) URL.revokeObjectURL(cropObjectUrl.value)
+  const url = URL.createObjectURL(file)
+  cropObjectUrl.value = url
+  cropSrc.value = url
+  cropModalOpen.value = true
+  input.value = ''
+}
+
+const handleCropModalOpenChange = (value: boolean) => {
+  cropModalOpen.value = value
+  if (!value) {
+    if (cropObjectUrl.value) {
+      URL.revokeObjectURL(cropObjectUrl.value)
+      cropObjectUrl.value = null
+    }
+    cropSrc.value = null
+  }
+}
+
+const onCropComplete = async (blob: Blob) => {
+  handleCropModalOpenChange(false)
   uploadingAvatar.value = true
   try {
+    const croppedFile = new File([blob], 'avatar.png', { type: 'image/png' })
     const form = new FormData()
-    form.append('files', file)
+    form.append('files', croppedFile)
     const uploaded = await $api<StrapiFile[]>('/api/upload', { method: 'POST', body: form })
     await $api('/api/auth/account', { method: 'PUT', body: { avatar: uploaded[0].id } })
     await auth.refreshMe()
@@ -146,9 +171,12 @@ const onAvatarSelected = async (event: Event) => {
     avatarError.value = getErrorMessage(err)
   } finally {
     uploadingAvatar.value = false
-    input.value = ''
   }
 }
+
+onBeforeUnmount(() => {
+  if (cropObjectUrl.value) URL.revokeObjectURL(cropObjectUrl.value)
+})
 
 const removeAvatar = async () => {
   avatarError.value = ''
@@ -226,6 +254,13 @@ const upcomingFeatures = computed(() => {
           <UAlert v-if="avatarError" color="error" icon="i-lucide-circle-alert" :description="avatarError" />
         </div>
       </UCard>
+
+      <AvatarCropperModal
+        :open="cropModalOpen"
+        :src="cropSrc"
+        @update:open="handleCropModalOpenChange"
+        @cropped="onCropComplete"
+      />
 
       <UCard class="lg:col-span-2">
         <template #header>

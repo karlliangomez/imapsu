@@ -1,13 +1,7 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 useHead({ title: 'iMapSU | Campus Property Management' })
 
 const auth = useAuth()
-
-const primaryCta = computed(() => {
-  if (!auth.isAuthenticated.value) return '/login'
-  if (auth.isStaff.value) return '/admin'
-  return '/properties'
-})
 
 const features = [
   {
@@ -35,9 +29,7 @@ const features = [
       <div class="absolute inset-0" style="background-image: radial-gradient(circle at 15% 60%, rgba(230, 181, 58, 0.35), transparent 32%), radial-gradient(circle at 85% 25%, rgba(230, 181, 58, 0.2), transparent 35%)" />
 
       <div class="relative mx-auto max-w-6xl px-6 py-24 text-center sm:py-32">
-        <span class="imapsu-brand-tile mx-auto mb-6 grid size-14 place-items-center rounded-2xl shadow-xl">
-          <UIcon name="i-lucide-map" class="size-7" />
-        </span>
+        <BrandLogo size="size-20" class="mx-auto mb-6" />
 
         <h1 class="text-4xl font-extrabold tracking-tight text-white sm:text-6xl">
           Manage campus property,<br class="hidden sm:block" /> the simple way.
@@ -47,7 +39,7 @@ const features = [
         </p>
 
         <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <UButton :to="primaryCta" size="lg" label="Navigate the map" icon="i-lucide-navigation" />
+          <UButton to="/campus-map" size="lg" label="Navigate the map" icon="i-lucide-navigation" />
           <UButton v-if="!auth.isAuthenticated.value" to="/register" size="lg" color="secondary" variant="subtle" label="Create an account" />
           <UButton v-else to="/account" size="lg" color="secondary" variant="subtle" label="My account" />
         </div>
