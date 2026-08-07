@@ -165,6 +165,17 @@ const roles = computed(() => data.value ?? [])
 
 const selected = ref<Record<string, string[]>>({})
 
+const ADMIN_LOCKED_ACTIONS = new Set([
+  'plugin::users-permissions.user.find',
+  'plugin::users-permissions.user.findOne',
+  'plugin::users-permissions.user.update',
+  'plugin::users-permissions.user.destroy'
+])
+
+const OAS_LOCKED_ACTIONS = new Set(
+  [...CATALOG_ACTIONS].filter(action => action !== 'plugin::users-permissions.user.update' && action !== 'plugin::users-permissions.user.destroy')
+)
+
 const syncSelected = () => {
   const next: Record<string, string[]> = {}
   for (const role of roles.value) {
@@ -181,17 +192,6 @@ const syncSelected = () => {
 }
 
 watch(roles, syncSelected, { immediate: true })
-
-const ADMIN_LOCKED_ACTIONS = new Set([
-  'plugin::users-permissions.user.find',
-  'plugin::users-permissions.user.findOne',
-  'plugin::users-permissions.user.update',
-  'plugin::users-permissions.user.destroy'
-])
-
-const OAS_LOCKED_ACTIONS = new Set(
-  [...CATALOG_ACTIONS].filter(action => action !== 'plugin::users-permissions.user.update' && action !== 'plugin::users-permissions.user.destroy')
-)
 
 const isProtected = (role: RoleInfo, action: string) => PROTECTED_ACTIONS.has(action)
   || (role.type === 'admin' && ADMIN_LOCKED_ACTIONS.has(action))
@@ -241,8 +241,6 @@ const roleColor = (type: string) => {
       return 'success'
     case 'aspiring-tenant':
       return 'secondary'
-    case 'field-personnel':
-      return 'info'
     default:
       return 'neutral'
   }

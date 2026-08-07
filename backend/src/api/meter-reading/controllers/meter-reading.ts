@@ -1,10 +1,9 @@
 /**
  * meter-reading controller
  *
- * Meter readings are recorded by Authorized Field Personnel against a tenancy.
- * Field personnel can list/read their own readings and submit new ones; the
- * `recordedBy` relation is always server-assigned. Staff (OAS / admin) see
- * every reading and may correct or remove them.
+ * Meter readings are recorded by staff (OAS / admin) against a tenancy.
+ * Staff can list, read, correct and remove readings; the `recordedBy`
+ * relation is always server-assigned.
  */
 
 import { factories } from '@strapi/strapi';
@@ -29,18 +28,12 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       await ctrl.validateQuery(ctx);
       const query = await ctrl.sanitizeQuery(ctx);
 
-      const filters =
-        isStaff(user) || userRole(user) === 'field-personnel'
-          ? isStaff(user)
-            ? (query.filters ?? {})
-            : {
-                ...(query.filters ?? {}),
-                recordedBy: { id: { $eq: user.id } },
-              }
-          : {
-              ...(query.filters ?? {}),
-              recordedBy: { id: { $eq: user.id } },
-            };
+      const filters = isStaff(user)
+        ? (query.filters ?? {})
+        : {
+            ...(query.filters ?? {}),
+            recordedBy: { id: { $eq: user.id } },
+          };
 
       const { results, pagination } = await service().find({ ...query, filters });
 
@@ -80,8 +73,8 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         return ctx.unauthorized();
       }
 
-      if (!isStaff(user) && userRole(user) !== 'field-personnel') {
-        return ctx.forbidden('Only field personnel or staff can record meter readings');
+      if (!isStaff(user)) {
+        return ctx.forbidden('Only staff can record meter readings');
       }
 
       const body = (ctx.request.body ?? {}) as Record<string, unknown>;

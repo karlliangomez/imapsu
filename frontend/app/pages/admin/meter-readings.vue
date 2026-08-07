@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   middleware: ['auth', 'role'],
-  roles: ['field-personnel', 'oas', 'admin']
+  roles: ['oas', 'admin']
 })
 
 type MeterReading = {
@@ -175,7 +175,7 @@ const isMine = (reading: MeterReading) => reading.recordedBy?.id === auth.user.v
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
-        <p class="imapsu-page-eyebrow mb-2">Field personnel</p>
+        <p class="imapsu-page-eyebrow mb-2">Management</p>
         <h1 class="imapsu-page-heading">Meter readings</h1>
         <p class="mt-2 max-w-xl text-muted">Record electric and water readings against active tenancies. Readings feed the next billing cycle.</p>
       </div>
@@ -237,7 +237,7 @@ const isMine = (reading: MeterReading) => reading.recordedBy?.id === auth.user.v
                 <p class="font-medium text-highlighted">{{ tenancyLabel(reading) }}</p>
                 <p class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
                   <span class="flex items-center gap-1"><UIcon name="i-lucide-calendar" class="size-3.5" />{{ formatDate(reading.readingDate) }}</span>
-                  <span class="flex items-center gap-1"><UIcon name="i-lucide-user" class="size-3.5" />{{ reading.recordedBy?.username ?? 'Field personnel' }}</span>
+                  <span class="flex items-center gap-1"><UIcon name="i-lucide-user" class="size-3.5" />{{ reading.recordedBy?.username ?? 'Staff' }}</span>
                   <span class="flex items-center gap-1"><UIcon name="i-lucide-clock" class="size-3.5" />{{ formatDateTime(reading.createdAt) }}</span>
                 </p>
               </div>
@@ -259,7 +259,7 @@ const isMine = (reading: MeterReading) => reading.recordedBy?.id === auth.user.v
               </div>
             </dl>
 
-            <p v-if="reading.notes" class="mt-4 rounded-lg bg-gold-50 px-3 py-2 text-sm text-toned">{{ reading.notes }}</p>
+            <p v-if="reading.notes" class="mt-4 rounded-lg bg-muted/20 px-3 py-2 text-sm text-muted">{{ reading.notes }}</p>
           </UCard>
         </div>
       </div>

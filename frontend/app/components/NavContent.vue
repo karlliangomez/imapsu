@@ -55,16 +55,6 @@ const roleLinks = computed<{ label: string; links: NavLink[] }[]>(() => {
     })
   }
 
-  if (auth.isFieldPersonnel.value) {
-    sections.push({
-      label: 'Field personnel',
-      links: [
-        { label: 'Meter readings', icon: 'i-lucide-gauge', to: '/field-personnel/meter-readings' },
-        { label: 'Announcements', icon: 'i-lucide-megaphone', to: '/announcements' }
-      ]
-    })
-  }
-
   if (auth.isOas.value) {
     sections.push({
       label: 'Management',
@@ -75,7 +65,7 @@ const roleLinks = computed<{ label: string; links: NavLink[] }[]>(() => {
         { label: 'Rental applications', icon: 'i-lucide-file-text', to: '/admin/applications' },
         { label: 'Tenancies', icon: 'i-lucide-key-round', to: '/admin/tenancies' },
         { label: 'Bills', icon: 'i-lucide-receipt', to: '/admin/bills' },
-        { label: 'Meter readings', icon: 'i-lucide-gauge', to: '/field-personnel/meter-readings' },
+        { label: 'Meter readings', icon: 'i-lucide-gauge', to: '/admin/meter-readings' },
         { label: 'Maintenance', icon: 'i-lucide-wrench', to: '/admin/maintenance' },
         { label: 'Feedback', icon: 'i-lucide-message-square', to: '/admin/feedback' }
       ]
