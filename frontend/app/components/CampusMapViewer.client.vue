@@ -2,8 +2,12 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js'
 import type { MapCorner, MapZone } from '~/types/map'
+import pamsuBuildings from '~/data/pamsu-buildings.json'
+
+type PamsuBuilding = { order: number; name: string; shortname: string }
 
 const props = withDefaults(
   defineProps<{
@@ -15,6 +19,7 @@ const props = withDefaults(
     autoBuildings?: boolean
     buildingColors?: Record<string, string>
     buildingStatus?: Record<string, 'Vacant' | 'Occupied'>
+    statusByOrder?: Record<string, 'Vacant' | 'Occupied'>
     labels?: Record<string, string>
   }>(),
   {
@@ -26,6 +31,7 @@ const props = withDefaults(
     autoBuildings: false,
     buildingColors: () => ({}),
     buildingStatus: () => ({}),
+    statusByOrder: () => ({}),
     labels: () => ({})
   }
 )
@@ -40,11 +46,32 @@ const emit = defineEmits<{
 
 const container = ref<HTMLDivElement | null>(null)
 
+// Map style matches the reference campus map: pale sage background, white
+// buildings, amber name pills and amber selection outlines. Vacancy status is
+// carried by a green/maroon building edge plus the label badge.
+const SCENE_BACKGROUND = '#e9edc9'
+const BUILDING_WHITE = '#ffffff'
+const HIGHLIGHT_COLOR = '#ffb300'
+const STATUS_COLORS: Record<'Vacant' | 'Occupied', string> = { Vacant: '#22c55e', Occupied: '#b84034' }
+const DEFAULT_COLOR = '#d4af37'
+// Frustum height of the top-down orthographic camera, in world units.
+const VIEW_HEIGHT = 800
+// Objects that span more than 40% of the model's XZ extent are treated as
+// terrain/ground and never selectable as buildings.
+const TERRAIN_RATIO = 0.4
+const DRACO_DECODER_PATH = '/draco/gltf/'
+// Window/door/glass materials stay dark so the white facade keeps its detail.
+const WHITE_BUILDING_EXCLUDE = /window|door|glass|logo/i
+
+const buildingEntries = new Map<number, PamsuBuilding>()
+for (const entry of pamsuBuildings) buildingEntries.set(entry.order, entry)
+
 let renderer: THREE.WebGLRenderer | null = null
 let labelRenderer: CSS2DRenderer | null = null
 let scene: THREE.Scene | null = null
-let camera: THREE.PerspectiveCamera | null = null
+let camera: THREE.OrthographicCamera | null = null
 let controls: OrbitControls | null = null
+let aspect = 1
 let raycaster = new THREE.Raycaster()
 let modelGroup: THREE.Group | null = null
 let frameId = 0
@@ -52,19 +79,38 @@ let resizeObserver: ResizeObserver | null = null
 let hasFitted = false
 let lastHoverCheck = 0
 
+type FocusAnimation = {
+  fromPos: THREE.Vector3
+  toPos: THREE.Vector3
+  fromTarget: THREE.Vector3
+  toTarget: THREE.Vector3
+  fromZoom: number
+  toZoom: number
+  start: number
+  duration: number
+}
+let focusAnim: FocusAnimation | null = null
+
 const zoneMeshes = new Map<string, THREE.Group>()
 const labelObjects = new Map<string, CSS2DObject>()
 let hoveredZoneId: string | null = null
 let pointerDownPos = { x: 0, y: 0 }
 let pointerDownTime = 0
-let autoZones: { name: string; corners: MapCorner[]; height: number; baseY: number }[] = []
 
-const ZONE_HOVER_TINT = 1.12
-const ZONE_ACTIVE_TINT = 1.28
-const DEFAULT_COLOR = '#d4af37'
-// Objects that span more than 40% of the model's XZ extent are treated as
-// terrain/ground and never selectable as buildings.
-const TERRAIN_RATIO = 0.4
+type BuildingNode = {
+  node: THREE.Object3D
+  order: number
+  id: string
+  name: string
+  shortname: string
+  corners: MapCorner[]
+  height: number
+  baseY: number
+}
+let buildingNodes: BuildingNode[] = []
+const statusEdges = new Map<string, THREE.Group>()
+const hoverEdges = new Map<string, THREE.Group>()
+let hoveredId: string | null = null
 
 const zoneIdOf = (zone: MapZone) => String(zone.documentId ?? zone.id ?? '')
 
@@ -88,7 +134,7 @@ function disposeObject(obj: THREE.Object3D) {
   })
 }
 
-function buildZoneMesh(zone: MapZone, id?: string): THREE.Group | null {
+function buildZoneMesh(zone: MapZone, id?: string, outlineColor: string = HIGHLIGHT_COLOR): THREE.Group | null {
   const pts = Array.isArray(zone.corners) ? zone.corners : []
   if (pts.length < 3) return null
 
@@ -104,7 +150,6 @@ function buildZoneMesh(zone: MapZone, id?: string): THREE.Group | null {
 
   const height = Math.max(Number(zone.height) || 4, 0.5)
   const baseY = Number.isFinite(Number(zone.baseY)) ? Number(zone.baseY) : 0
-  const color = /^#[0-9a-fA-F]{6}$/.test(zone.color ?? '') ? zone.color : DEFAULT_COLOR
 
   const geometry = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false })
   geometry.rotateX(-Math.PI / 2)
@@ -112,59 +157,171 @@ function buildZoneMesh(zone: MapZone, id?: string): THREE.Group | null {
   const group = new THREE.Group()
   group.position.y = baseY
   group.renderOrder = 10
-  group.userData.baseColor = new THREE.Color(color)
+  group.userData.baseColor = new THREE.Color(BUILDING_WHITE)
 
   const material = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(color),
-    roughness: 0.6,
-    metalness: 0.1
+    color: new THREE.Color(BUILDING_WHITE),
+    roughness: 0.78,
+    metalness: 0.05,
+    transparent: true,
+    opacity: 0.55
   })
   group.add(new THREE.Mesh(geometry, material))
 
   const edges = new THREE.EdgesGeometry(geometry)
-  const outline = new THREE.LineSegments(
+  const statusOutline = new THREE.LineSegments(
     edges,
-    new THREE.LineBasicMaterial({
-      color: new THREE.Color(color).multiplyScalar(0.55),
-      depthWrite: false
-    })
+    new THREE.LineBasicMaterial({ color: new THREE.Color(outlineColor), depthWrite: false })
   )
-  group.add(outline)
+  group.add(statusOutline)
+
+  const highlightOutline = new THREE.LineSegments(
+    edges,
+    new THREE.LineBasicMaterial({ color: new THREE.Color(HIGHLIGHT_COLOR), depthTest: false, depthWrite: false })
+  )
+  highlightOutline.visible = false
+  highlightOutline.renderOrder = 999
+  group.add(highlightOutline)
+  group.userData.highlightOutline = highlightOutline
 
   group.userData.zoneId = id ?? zoneIdOf(zone)
   group.userData.zone = zone
   return group
 }
 
-function collectAutoZones() {
-  autoZones = []
+/**
+ * A node is a campus building when its name is a building number (the GLB is
+ * authored with numeric node names matching the building directory), a
+ * concrete block ("Cube.*"), or an unnamed building.
+ */
+function isBuildingNodeName(name: string): boolean {
+  return /^\d+$/.test(name) || /^cube\./i.test(name) || /^unnamed building/i.test(name)
+}
+
+/**
+ * Paints every building in the GLB white (matching the white-walled reference
+ * campus), while ground/roads/walkways/gates keep their original look.
+ */
+function whitenBuildings(root: THREE.Object3D) {
+  for (const child of root.children) {
+    if (!isBuildingNodeName(child.name)) continue
+    child.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return
+      const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
+      for (const material of materials) {
+        const meshMaterial = material as THREE.MeshStandardMaterial
+        if (!meshMaterial.color) continue
+        if (WHITE_BUILDING_EXCLUDE.test(material.name ?? '')) continue
+        meshMaterial.color.set(BUILDING_WHITE)
+        meshMaterial.map = null
+        meshMaterial.roughness = 0.85
+        meshMaterial.metalness = 0
+      }
+    })
+  }
+}
+
+function applyShadows(root: THREE.Object3D) {
+  root.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh)) return
+    obj.receiveShadow = true
+    obj.castShadow = isBuildingNodeName(obj.parent?.name ?? '') || isBuildingNodeName(obj.name ?? '')
+  })
+}
+
+function collectBuildings() {
+  buildingNodes = []
   if (!modelGroup) return
-  const modelBox = new THREE.Box3().setFromObject(modelGroup)
-  const modelSize = modelBox.getSize(new THREE.Vector3())
-  const modelXZ = Math.max(modelSize.x, modelSize.z, 1)
-
   for (const child of modelGroup.children) {
-    if (!isLabelableName(child.name)) continue
-    const box = new THREE.Box3().setFromObject(child)
-    if (box.isEmpty()) continue
-    const size = box.getSize(new THREE.Vector3())
-    if (Math.max(size.x, size.z) > modelXZ * TERRAIN_RATIO) continue
-
+    const order = /^\d+$/.test(child.name) ? parseInt(child.name, 10) : NaN
+    if (!Number.isFinite(order)) continue
+    const entry = buildingEntries.get(order)
     const corners = computeGroundFootprint(child)
     if (!corners || corners.length < 3) continue
-    autoZones.push({
-      name: displayNameOf(child.name),
-      corners: inflateFootprint(corners),
-      // The block pokes slightly above the roof so the status color reads as a
-      // shell around the building rather than being covered by its mesh.
-      height: Math.max(size.y, 0.5) + 0.6,
+    const box = new THREE.Box3().setFromObject(child)
+    const size = box.getSize(new THREE.Vector3())
+    buildingNodes.push({
+      node: child,
+      order,
+      id: entry ? normalizeName(entry.name) : normalizeName(child.name),
+      name: entry?.name ?? displayNameOf(child.name),
+      shortname: entry?.shortname ?? entry?.name ?? '',
+      corners,
+      height: Math.max(size.y, 0.5),
       baseY: box.min.y
     })
   }
 }
 
+/**
+ * Builds an amber (hover/selection) or status-colored (vacancy) outline around
+ * every mesh of a building node, using its actual geometry edges so the
+ * highlight traces the real building shape.
+ */
+function buildNodeEdges(node: THREE.Object3D, color: string, renderOrder: number, noDepth: boolean): THREE.Group | null {
+  const group = new THREE.Group()
+  const material = new THREE.LineBasicMaterial({
+    color: new THREE.Color(color),
+    depthTest: !noDepth,
+    depthWrite: false
+  })
+  node.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh) || !obj.geometry) return
+    const edges = new THREE.EdgesGeometry(obj.geometry, 20)
+    const segments = new THREE.LineSegments(edges, material)
+    segments.matrix.copy(obj.matrixWorld)
+    segments.matrixAutoUpdate = false
+    segments.renderOrder = renderOrder
+    group.add(segments)
+  })
+  if (group.children.length === 0) {
+    material.dispose()
+    return null
+  }
+  return group
+}
+
+function rebuildEdges() {
+  if (!scene) return
+  for (const [, group] of statusEdges) {
+    scene.remove(group)
+    disposeObject(group)
+  }
+  for (const [, group] of hoverEdges) {
+    scene.remove(group)
+    disposeObject(group)
+  }
+  statusEdges.clear()
+  hoverEdges.clear()
+
+  for (const b of buildingNodes) {
+    const orderKey = String(b.order)
+    const status = props.statusByOrder[orderKey]
+    if (status) {
+      const group = buildNodeEdges(b.node, STATUS_COLORS[status], 990, false)
+      if (group) {
+        statusEdges.set(orderKey, group)
+        scene.add(group)
+      }
+    }
+    const hover = buildNodeEdges(b.node, HIGHLIGHT_COLOR, 999, true)
+    if (hover) {
+      hover.visible = false
+      hoverEdges.set(orderKey, hover)
+      scene.add(hover)
+    }
+  }
+  applyHighlight()
+}
+
 function rebuildZones() {
   if (!scene) return
+
+  if (props.autoBuildings) {
+    rebuildEdges()
+    rebuildLabels()
+    return
+  }
 
   for (const [, group] of zoneMeshes) {
     scene.remove(group)
@@ -172,34 +329,11 @@ function rebuildZones() {
   }
   zoneMeshes.clear()
 
-  if (props.autoBuildings) {
-    for (const b of autoZones) {
-      const color = props.buildingColors[normalizeName(b.name)] ?? DEFAULT_COLOR
-      // Only listed buildings (green = vacant, red = occupied) get a highlight
-      // shell. Unlisted buildings stay as their plain model cube so the map
-      // focuses on vacancy status.
-      if (color === DEFAULT_COLOR) continue
-      const zone: MapZone = {
-        id: normalizeName(b.name),
-        name: b.name,
-        corners: b.corners,
-        height: b.height,
-        baseY: b.baseY,
-        color
-      }
-      const group = buildZoneMesh(zone, normalizeName(b.name))
-      if (group) {
-        zoneMeshes.set(normalizeName(b.name), group)
-        scene.add(group)
-      }
-    }
-  } else {
-    for (const zone of props.zones) {
-      const group = buildZoneMesh(zone)
-      if (group) {
-        zoneMeshes.set(zoneIdOf(zone), group)
-        scene.add(group)
-      }
+  for (const zone of props.zones) {
+    const group = buildZoneMesh(zone)
+    if (group) {
+      zoneMeshes.set(zoneIdOf(zone), group)
+      scene.add(group)
     }
   }
 
@@ -236,23 +370,31 @@ function rebuildLabels() {
   }
 
   const items = props.autoBuildings
-    ? autoZones.map((b) => ({
-        name: b.name,
-        corners: b.corners,
-        height: b.height,
-        baseY: b.baseY,
-        key: `zone:${normalizeName(b.name)}`
-      }))
+    ? buildingNodes
+        // Skip buildings that have neither a pamsu entry nor a custom map label,
+        // so raw numeric node names (e.g. missing pamsu entries) stay unlabeled.
+        .filter((b) => buildingEntries.has(b.order) || props.labels[b.id])
+        .map((b) => ({
+          id: b.id,
+          order: b.order,
+          name: b.shortname || b.name,
+          corners: b.corners,
+          height: b.height,
+          baseY: b.baseY
+        }))
     : props.zones.map((zone) => ({
+        id: `zone:${zoneIdOf(zone)}`,
+        order: 0,
         name: zone.name,
         corners: Array.isArray(zone.corners) ? zone.corners : [],
         height: Math.max(Number(zone.height) || 4, 0.5),
-        baseY: Number.isFinite(Number(zone.baseY)) ? Number(zone.baseY) : 0,
-        key: `zone:${zoneIdOf(zone)}`
+        baseY: Number.isFinite(Number(zone.baseY)) ? Number(zone.baseY) : 0
       }))
 
-  // Labels are anchored to the top-center of each building's highlight block,
-  // so a name always sits directly over the building it refers to.
+  // Labels are anchored to the top-center of each building footprint so a name
+  // always sits directly over the building it refers to. The map key is the
+  // unique building order in auto mode (names repeat across the campus) and the
+  // zone id otherwise, so every label object is tracked and removable.
   for (const item of items) {
     if (!item.name) continue
     const pts = item.corners.filter((c) => Number.isFinite(Number(c.x)) && Number.isFinite(Number(c.z)))
@@ -260,28 +402,36 @@ function rebuildLabels() {
     const cx = pts.reduce((sum, c) => sum + Number(c.x), 0) / pts.length
     const cz = pts.reduce((sum, c) => sum + Number(c.z), 0) / pts.length
     const height = Math.max(item.height, 0.5)
-    const text = props.labels[normalizeName(item.name)] ?? item.name
-    const status = props.buildingStatus[normalizeName(item.name)]
-    addLabel(text, cx, item.baseY + height + 2.2, cz, item.key, status)
+    const text = props.autoBuildings ? props.labels[item.id] ?? item.name : props.labels[normalizeName(item.name)] ?? item.name
+    const status = props.autoBuildings ? props.statusByOrder[String(item.order)] : props.buildingStatus[normalizeName(item.name)]
+    const key = props.autoBuildings ? `label:${item.order}` : `label:${item.id}`
+    addLabel(text, cx, item.baseY + height + 2.5, cz, key, status)
   }
 }
 
-function setZoneTint(id: string, scale: number) {
+function setZoneHighlight(id: string, on: boolean) {
+  const edge = hoverEdges.get(id)
+  if (edge) edge.visible = on
   const group = zoneMeshes.get(id)
-  if (!group) return
-  const base = group.userData.baseColor as THREE.Color | undefined
-  if (!base) return
-  group.traverse((obj) => {
-    if (obj instanceof THREE.Mesh && obj.material instanceof THREE.MeshStandardMaterial) {
-      obj.material.color.copy(base).multiplyScalar(scale)
-    }
-  })
+  const outline = group?.userData.highlightOutline as THREE.LineSegments | undefined
+  if (outline) outline.visible = on
 }
 
 function applyHighlight() {
-  for (const id of zoneMeshes.keys()) {
-    setZoneTint(id, id === props.activeZoneId ? ZONE_ACTIVE_TINT : 1)
+  const active = props.activeZoneId
+  const targets = new Set<string>()
+  if (active) {
+    if (props.autoBuildings) {
+      // Active id is the normalized building name, which can be shared by
+      // several buildings (duplicate names across the campus), so highlight
+      // every building that carries it.
+      for (const b of buildingNodes) if (b.id === active) targets.add(String(b.order))
+    } else {
+      targets.add(active)
+    }
   }
+  for (const id of hoverEdges.keys()) setZoneHighlight(id, targets.has(id))
+  for (const id of zoneMeshes.keys()) setZoneHighlight(id, targets.has(id))
 }
 
 function pickZone(clientX: number, clientY: number): MapZone | null {
@@ -403,30 +553,6 @@ function computeGroundFootprint(node: THREE.Object3D): MapCorner[] | null {
   return simplifyFootprint(convexHull(vertices))
 }
 
-/**
- * Grows a footprint outward from its centroid so the highlight block sticks
- * out around the building mesh instead of being hidden inside it. Each corner
- * moves outward by at least MIN_GROW units and at least GROW_RATIO of its
- * distance from the centroid, keeping the centroid (and therefore the labels)
- * exactly in place.
- */
-function inflateFootprint(corners: MapCorner[]): MapCorner[] {
-  if (corners.length === 0) return corners
-  const cx = corners.reduce((sum, c) => sum + c.x, 0) / corners.length
-  const cz = corners.reduce((sum, c) => sum + c.z, 0) / corners.length
-  const GROW_RATIO = 0.04
-  const MIN_GROW = 0.75
-
-  return corners.map((c) => {
-    const dx = c.x - cx
-    const dz = c.z - cz
-    const len = Math.hypot(dx, dz)
-    if (len === 0) return { x: c.x, z: c.z }
-    const grow = Math.max(len * GROW_RATIO, MIN_GROW)
-    return { x: c.x + (dx / len) * grow, z: c.z + (dz / len) * grow }
-  })
-}
-
 // The model is static per session, so footprints are computed once per node.
 const footprintCache = new WeakMap<THREE.Object3D, { corners: MapCorner[]; height: number; baseY: number; name: string | null } | null>()
 
@@ -477,31 +603,103 @@ function fitCamera() {
 
   const center = box.getCenter(new THREE.Vector3())
   const size = box.getSize(new THREE.Vector3())
-  const maxDim = Math.max(size.x, size.y, size.z, 1)
-  const dist = (maxDim / (2 * Math.tan(((camera.fov * Math.PI) / 180) / 2))) * 1.6
+  const fitWorld = Math.max(size.x / Math.max(aspect, 0.001), size.z) * 1.35
 
-  camera.position.set(center.x + dist * 0.7, center.y + dist * 0.85, center.z + dist)
+  camera.position.set(center.x, 900, center.z)
   controls.target.copy(center)
+  camera.zoom = Math.max(VIEW_HEIGHT / Math.max(fitWorld, 1), 0.01)
+  camera.updateProjectionMatrix()
   controls.update()
   hasFitted = true
 }
 
 function resetCamera() {
+  focusAnim = null
   hasFitted = false
   fitCamera()
 }
 
+/**
+ * Smoothly flies the camera to a zone's footprint and frames the whole
+ * building (including its height) from a 3/4 angle, so the facade is visible
+ * instead of a straight top-down view.
+ */
+function focusOn(zone: MapZone) {
+  if (!camera || !controls) return
+  const pts = Array.isArray(zone.corners) ? zone.corners : []
+  const xs = pts.map((p) => Number(p.x)).filter(Number.isFinite)
+  const zs = pts.map((p) => Number(p.z)).filter(Number.isFinite)
+  if (xs.length === 0 || zs.length === 0) return
+
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minZ = Math.min(...zs)
+  const maxZ = Math.max(...zs)
+  const cx = (minX + maxX) / 2
+  const cz = (minZ + maxZ) / 2
+  const height = Math.max(Number(zone.height) || 4, 1)
+  const baseY = Number(zone.baseY) || 0
+  const cy = baseY + height / 2
+
+  const extent = Math.max(maxX - minX, maxZ - minZ, height, 1)
+  const radius = Math.hypot(extent, height) / 2
+  const dir = new THREE.Vector3(1, 1, 0.35).normalize()
+  const toTarget = new THREE.Vector3(cx, cy, cz)
+  const toPos = toTarget.clone().addScaledVector(dir, radius * 3.6)
+  const fitWorld = Math.max((radius * 2) / Math.max(aspect, 0.001), radius * 2) * 1.35
+
+  hasFitted = true
+  focusAnim = {
+    fromPos: camera.position.clone(),
+    fromTarget: controls.target.clone(),
+    fromZoom: camera.zoom,
+    toPos,
+    toTarget,
+    toZoom: Math.max(VIEW_HEIGHT / Math.max(fitWorld, 1), 0.01),
+    start: performance.now(),
+    duration: 600
+  }
+}
+
+/**
+ * Focuses the building with the given pamsu order (used by the page's search
+ * results) and lets the page know it was selected.
+ */
+function focusBuilding(order: number) {
+  const b = buildingNodes.find((node) => node.order === order)
+  if (!b) return
+  const entry = buildingEntries.get(order)
+  if (!entry) return
+  const status = props.statusByOrder[String(order)]
+  const zone: MapZone = {
+    id: normalizeName(entry.name),
+    name: entry.name,
+    type: 'Property',
+    corners: b.corners,
+    height: b.height,
+    baseY: b.baseY,
+    color: status ? STATUS_COLORS[status] : DEFAULT_COLOR
+  }
+  focusOn(zone)
+  emit('select', zone)
+}
+
 function loadModel() {
   const loader = new GLTFLoader()
+  const draco = new DRACOLoader()
+  draco.setDecoderPath(DRACO_DECODER_PATH)
+  loader.setDRACOLoader(draco)
   loader.load(
     props.modelPath,
     (gltf) => {
       if (!scene) return
       modelGroup = gltf.scene
       scene.add(modelGroup)
+      whitenBuildings(modelGroup)
+      applyShadows(modelGroup)
       if (props.autoBuildings) {
-        collectAutoZones()
-        emit('buildings-ready', autoZones.length)
+        collectBuildings()
+        emit('buildings-ready', buildingNodes.length)
       }
       rebuildZones()
       if (!hasFitted) fitCamera()
@@ -520,14 +718,25 @@ function init() {
   const height = el.clientHeight || 600
 
   scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x0e1418)
+  scene.background = new THREE.Color(SCENE_BACKGROUND)
 
-  camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 5000)
-  camera.position.set(30, 40, 60)
+  aspect = width / height
+  camera = new THREE.OrthographicCamera(
+    (VIEW_HEIGHT * aspect) / -2,
+    (VIEW_HEIGHT * aspect) / 2,
+    VIEW_HEIGHT / 2,
+    VIEW_HEIGHT / -2,
+    0.1,
+    5000
+  )
+  camera.position.set(0, 900, 0)
+  camera.lookAt(0, 0, 0)
 
   renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setSize(width, height)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap
   el.appendChild(renderer.domElement)
 
   labelRenderer = new CSS2DRenderer()
@@ -541,19 +750,26 @@ function init() {
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
   controls.dampingFactor = 0.08
-  controls.minDistance = 2
-  controls.maxDistance = 600
-  // Keep the camera above the ground plane so the campus can never be viewed
-  // from underneath.
+  // Top-down map: keep the camera above the ground plane.
   controls.maxPolarAngle = Math.PI / 2 - 0.02
+  controls.target.set(0, 0, 0)
+  controls.update()
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.75))
-  const sun = new THREE.DirectionalLight(0xffffff, 1.3)
-  sun.position.set(40, 60, 30)
+  // Reference-map lighting: pale blue sky / warm ground hemisphere plus a
+  // bright directional key that casts soft shadows between the white buildings.
+  scene.add(new THREE.HemisphereLight(0xb1e1ff, 0xb97a20, 1))
+  const sun = new THREE.DirectionalLight(0xffffff, 2.5)
+  sun.position.set(-250, 800, -850)
+  sun.castShadow = true
+  sun.shadow.mapSize.set(2048, 2048)
+  sun.shadow.camera.left = -600
+  sun.shadow.camera.right = 600
+  sun.shadow.camera.top = 600
+  sun.shadow.camera.bottom = -600
+  sun.shadow.camera.near = 1
+  sun.shadow.camera.far = 2000
+  sun.shadow.bias = -0.0005
   scene.add(sun)
-  const fill = new THREE.DirectionalLight(0x8fa8c0, 0.45)
-  fill.position.set(-40, 20, -30)
-  scene.add(fill)
 
   const dom = renderer.domElement
   dom.addEventListener('pointerdown', onPointerDown)
@@ -574,7 +790,11 @@ function onResize() {
   if (!el || !renderer || !camera) return
   const width = el.clientWidth || 1
   const height = el.clientHeight || 1
-  camera.aspect = width / height
+  aspect = width / height
+  camera.left = (VIEW_HEIGHT * aspect) / -2
+  camera.right = (VIEW_HEIGHT * aspect) / 2
+  camera.top = VIEW_HEIGHT / 2
+  camera.bottom = VIEW_HEIGHT / -2
   camera.updateProjectionMatrix()
   renderer.setSize(width, height)
   labelRenderer?.setSize(width, height)
@@ -582,6 +802,15 @@ function onResize() {
 
 function animate() {
   frameId = requestAnimationFrame(animate)
+  if (camera && controls && focusAnim) {
+    const t = Math.min(1, (performance.now() - focusAnim.start) / focusAnim.duration)
+    const eased = 1 - Math.pow(1 - t, 3)
+    camera.position.lerpVectors(focusAnim.fromPos, focusAnim.toPos, eased)
+    controls.target.lerpVectors(focusAnim.fromTarget, focusAnim.toTarget, eased)
+    camera.zoom = focusAnim.fromZoom + (focusAnim.toZoom - focusAnim.fromZoom) * eased
+    camera.updateProjectionMatrix()
+    if (t >= 1) focusAnim = null
+  }
   if (controls) controls.update()
   if (renderer && scene && camera) renderer.render(scene, camera)
   if (labelRenderer && scene && camera) labelRenderer.render(scene, camera)
@@ -607,27 +836,30 @@ function onPointerUp(event: PointerEvent) {
     return
   }
 
-  const zone = pickZone(event.clientX, event.clientY)
-  if (zone) {
-    emit('select', zone)
-    return
+  if (!props.autoBuildings) {
+    const zone = pickZone(event.clientX, event.clientY)
+    if (zone) {
+      emit('select', zone)
+      return
+    }
   }
 
-  // Any user can also tap the building mesh itself (e.g. above the highlight
-  // block) and still see the building details.
   const building = pickModelBuilding(event.clientX, event.clientY)
-  if (building) {
-    const displayName = building.name ?? ''
-    emit('select', {
-      id: normalizeName(displayName),
-      name: displayName || 'Building',
-      type: 'Property',
-      corners: building.corners,
-      height: building.height,
-      baseY: building.baseY,
-      color: displayName ? props.buildingColors[normalizeName(displayName)] ?? DEFAULT_COLOR : DEFAULT_COLOR
-    })
-  }
+  if (!building?.name) return
+  const order = /^\d+$/.test(building.name) ? parseInt(building.name, 10) : NaN
+  const entry = Number.isFinite(order) ? buildingEntries.get(order) : undefined
+  if (!entry) return
+
+  const status = props.statusByOrder[String(order)]
+  emit('select', {
+    id: normalizeName(entry.name),
+    name: entry.name,
+    type: 'Property',
+    corners: building.corners,
+    height: building.height,
+    baseY: building.baseY,
+    color: status ? STATUS_COLORS[status] : DEFAULT_COLOR
+  })
 }
 
 function onPointerMove(event: PointerEvent) {
@@ -640,20 +872,36 @@ function onPointerMove(event: PointerEvent) {
     }
     return
   }
-  const zone = pickZone(event.clientX, event.clientY)
-  const id = zone ? zoneIdOf(zone) : null
-  if (id !== hoveredZoneId) {
-    if (hoveredZoneId) setZoneTint(hoveredZoneId, 1)
-    hoveredZoneId = id
-    if (id) setZoneTint(id, ZONE_HOVER_TINT)
+
+  let overPointer = false
+  if (!props.autoBuildings) {
+    const zone = pickZone(event.clientX, event.clientY)
+    const id = zone ? zoneIdOf(zone) : null
+    if (id !== hoveredZoneId) {
+      if (hoveredZoneId) setZoneHighlight(hoveredZoneId, false)
+      hoveredZoneId = id
+      if (id) setZoneHighlight(id, true)
+    }
+    overPointer = !!zone
   }
+
   const now = performance.now()
-  let overBuilding = false
-  if (!zone && now - lastHoverCheck > 80) {
+  if (now - lastHoverCheck > 80) {
     lastHoverCheck = now
-    overBuilding = !!pickModelBuilding(event.clientX, event.clientY)
+    const building = pickModelBuilding(event.clientX, event.clientY)
+    let id: string | null = null
+    if (building?.name && /^\d+$/.test(building.name)) {
+      const entry = buildingEntries.get(parseInt(building.name, 10))
+      if (entry) id = String(entry.order)
+    }
+    if (id !== hoveredId) {
+      if (hoveredId) setZoneHighlight(hoveredId, false)
+      hoveredId = id
+      if (id) setZoneHighlight(id, true)
+    }
+    overPointer = overPointer || !!building
   }
-  renderer.domElement.style.cursor = zone || overBuilding ? 'pointer' : 'default'
+  renderer.domElement.style.cursor = overPointer ? 'pointer' : 'default'
 }
 
 watch(
@@ -690,6 +938,15 @@ watch(
   { deep: true }
 )
 
+watch(
+  () => props.statusByOrder,
+  () => {
+    rebuildEdges()
+    rebuildLabels()
+  },
+  { deep: true }
+)
+
 onMounted(() => init())
 
 onBeforeUnmount(() => {
@@ -711,6 +968,14 @@ onBeforeUnmount(() => {
       scene.remove(group)
       disposeObject(group)
     }
+    for (const [, group] of statusEdges) {
+      scene.remove(group)
+      disposeObject(group)
+    }
+    for (const [, group] of hoverEdges) {
+      scene.remove(group)
+      disposeObject(group)
+    }
     for (const [, label] of labelObjects) {
       scene.remove(label)
       label.element.remove()
@@ -722,7 +987,7 @@ onBeforeUnmount(() => {
   renderer?.dispose()
 })
 
-defineExpose({ resetCamera })
+defineExpose({ resetCamera, focusOn, focusBuilding })
 </script>
 
 <template>
@@ -732,28 +997,31 @@ defineExpose({ resetCamera })
 <style>
 .campus-map-label {
   position: absolute;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 9px;
-  border-radius: 9999px;
-  background: rgba(9, 14, 19, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #b84034;
   color: #fff;
+  font-family: sans-serif;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.5;
   white-space: nowrap;
   user-select: none;
   pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 .campus-map-label-status {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 0 6px;
-  border-radius: 9999px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: #fff;
+  color: #b84034;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -761,14 +1029,12 @@ defineExpose({ resetCamera })
 }
 
 .campus-map-label-status.is-vacant {
-  background: rgba(34, 197, 94, 0.22);
-  border: 1px solid rgba(34, 197, 94, 0.7);
-  color: #4ade80;
+  background: #16a34a;
+  color: #fff;
 }
 
 .campus-map-label-status.is-occupied {
-  background: rgba(184, 64, 52, 0.22);
-  border: 1px solid rgba(184, 64, 52, 0.7);
-  color: #e4857b;
+  background: #fff;
+  color: #b84034;
 }
 </style>

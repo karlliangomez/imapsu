@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MapProperty, MapZone } from '~/types/map'
-import { buildingColors, buildingOccupancy, MAP_STATUS_COLORS, normalizeBuildingName, propertiesInBuilding } from '~/utils/mapZones'
-import { BUILDING_NAMES } from '~/utils/buildings'
+import { MAP_STATUS_COLORS, normalizeBuildingName } from '~/utils/mapZones'
+import { PAMSU_BUILDINGS, buildingStatusByOrder, propertiesInPamsuBuilding } from '~/utils/pamsu'
 
 type ListResponse<T> = { data: T[] }
 
@@ -30,8 +30,7 @@ const { data: labelsData, refresh: refreshLabels } = await useFetch<ListResponse
 })
 
 const properties = computed(() => propertiesData.value?.data ?? [])
-const colors = computed(() => buildingColors(properties.value))
-const statuses = computed(() => buildingOccupancy(properties.value))
+const statusByOrder = computed(() => buildingStatusByOrder(properties.value))
 const labels = computed<Record<string, string>>(() => {
   const map: Record<string, string> = {}
   for (const entry of labelsData.value?.data ?? []) map[normalizeBuildingName(entry.buildingKey)] = entry.label
@@ -40,7 +39,7 @@ const labels = computed<Record<string, string>>(() => {
 const selected = ref<MapZone | null>(null)
 const modelError = ref('')
 const showNames = ref(true)
-const buildingCount = ref(BUILDING_NAMES.length)
+const buildingCount = ref(PAMSU_BUILDINGS.length)
 
 // OAS-only building labeling. In this mode clicking a building opens the name
 // editor instead of the property details panel.
@@ -51,14 +50,55 @@ const labelDraft = ref('')
 const savingLabel = ref(false)
 const labelError = ref('')
 
-type ViewerRef = { resetCamera: () => void }
+type ViewerRef = { resetCamera: () => void; focusOn: (zone: MapZone) => void; focusBuilding: (order: number) => void }
 
 const viewer = ref<ViewerRef | null>(null)
 
 const displayName = (zone: MapZone) => labels.value[normalizeBuildingName(zone.name)] ?? zone.name
 
+type SearchResult = {
+  order: number
+  name: string
+  shortname: string
+  match: string
+}
+
+const searchQuery = ref('')
+const searchOpen = ref(false)
+
+const searchResults = computed<SearchResult[]>(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q.length < 2) return []
+  const results: SearchResult[] = []
+  for (const entry of PAMSU_BUILDINGS) {
+    const name = entry.name.toLowerCase()
+    const short = entry.shortname.toLowerCase()
+    const nameHit = name.includes(q)
+    const shortHit = short.length > 0 && short.includes(q)
+    const business = propertiesInPamsuBuilding(entry.name, properties.value)
+      .filter((p) => p.space_status === 'Occupied')
+      .map((p) => (p.businessName ?? '').trim())
+      .find((b) => b.toLowerCase().includes(q))
+    if (nameHit || shortHit || business) {
+      results.push({
+        order: entry.order,
+        name: entry.name,
+        shortname: entry.shortname,
+        match: business ?? (shortHit ? entry.shortname : '')
+      })
+    }
+  }
+  return results
+})
+
+const jumpTo = (order: number) => {
+  viewer.value?.focusBuilding(order)
+  searchQuery.value = ''
+  searchOpen.value = false
+}
+
 const selectZone = (zone: MapZone) => {
-  viewer.value?.resetCamera()
+  viewer.value?.focusOn(zone)
   if (labelMode.value && auth.isOas.value) {
     const key = normalizeBuildingName(zone.name)
     labelDraft.value = labels.value[key] ?? zone.name
@@ -123,7 +163,7 @@ const removeLabel = async () => {
   }
 }
 
-const buildingProperties = computed(() => propertiesInBuilding(selected.value?.name, properties.value))
+const buildingProperties = computed(() => propertiesInPamsuBuilding(selected.value?.name ?? '', properties.value))
 
 const propertyBadgeColor = (property: MapProperty) => (property.space_status === 'Vacant' ? 'success' : 'error')
 
@@ -161,8 +201,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
       <CampusMapViewer
         ref="viewer"
         :auto-buildings="true"
-        :building-colors="colors"
-        :building-status="statuses"
+        :status-by-order="statusByOrder"
         :labels="labels"
         :active-zone-id="selected ? normalizeBuildingName(selected.name) : null"
         :show-names="showNames"
@@ -194,8 +233,38 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
     <div class="pointer-events-none absolute left-4 top-4 z-10 max-w-sm">
       <div class="pointer-events-auto rounded-xl border border-default bg-(--ui-bg)/90 p-4 shadow-lg backdrop-blur">
         <h1 class="imapsu-page-heading">Campus Map</h1>
-        <p class="mt-1 text-sm text-muted">
-          Explore the campus in 3D. Building colors come from the property page: green has a vacant space, maroon is fully occupied, and unlisted buildings keep their original look.
+
+        <div class="relative mt-3">
+          <UInput
+            v-model="searchQuery"
+            icon="i-lucide-search"
+            placeholder="Search building or business…"
+            autocomplete="off"
+            @focus="searchOpen = true"
+            @blur="setTimeout(() => (searchOpen = false), 150)"
+          />
+          <div
+            v-if="searchOpen && searchResults.length"
+            class="absolute left-0 right-0 z-20 mt-1 max-h-64 overflow-auto rounded-lg border border-(--ui-border) bg-(--ui-bg) shadow-lg"
+          >
+            <button
+              v-for="result in searchResults"
+              :key="result.order"
+              type="button"
+              class="block w-full px-3 py-2 text-left text-sm hover:bg-(--ui-bg-elevated)"
+              @click="jumpTo(result.order)"
+            >
+              <span class="block truncate font-medium">{{ result.name }}</span>
+              <span v-if="result.match" class="block truncate text-xs text-primary">{{ result.match }}</span>
+            </button>
+          </div>
+          <p v-else-if="searchOpen && searchQuery.trim().length >= 2" class="mt-1 text-xs text-muted">
+            No buildings or businesses match “{{ searchQuery }}”.
+          </p>
+        </div>
+
+        <p class="mt-3 text-sm text-muted">
+          Explore the campus from above. Buildings render white; a green edge means at least one vacant space is available and a maroon edge means the building is fully occupied.
         </p>
         <p class="mt-2 flex items-center gap-1.5 text-xs text-muted">
           <UIcon name="i-lucide-mouse-pointer-click" class="size-3.5" />
@@ -218,23 +287,23 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
         v-if="auth.isOas.value"
         size="sm"
         :color="labelMode ? 'primary' : 'neutral'"
-        :variant="labelMode ? 'solid' : 'ghost'"
+        variant="solid"
         icon="i-lucide-pen-line"
         :label="labelMode ? 'Stop labeling' : 'Label buildings'"
         @click="labelMode = !labelMode"
       />
       <UButton
         size="sm"
-        variant="ghost"
+        variant="solid"
         color="neutral"
         icon="i-lucide-tag"
         :label="showNames ? 'Hide names' : 'Show names'"
         @click="showNames = !showNames"
       />
       <UButton
-        v-if="BUILDING_NAMES.length"
+        v-if="PAMSU_BUILDINGS.length"
         size="sm"
-        variant="ghost"
+        variant="solid"
         color="neutral"
         icon="i-lucide-rotate-ccw"
         label="Reset view"
@@ -243,7 +312,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
       <UButton
         size="sm"
         :color="isFullscreen ? 'primary' : 'neutral'"
-        :variant="isFullscreen ? 'solid' : 'ghost'"
+        variant="solid"
         :icon="isFullscreen ? 'i-lucide-minimize' : 'i-lucide-maximize'"
         :label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
         @click="toggleFullscreen"
@@ -334,7 +403,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
           Fully occupied
         </span>
       </div>
-      <p class="mt-2 text-[10px] text-muted">Building badges read ● Vacant / ● Occupied</p>
+      <p class="mt-2 text-[10px] text-muted">Building edges read ● Vacant / ● Occupied</p>
     </div>
 
     <div class="absolute bottom-4 left-1/2 z-10 w-64 -translate-x-1/2">

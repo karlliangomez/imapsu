@@ -1,0 +1,272 @@
+[
+ {
+  "order": 1,
+  "name": "DIOSDADO MACAPAGAL MUSEUM, LIBRARY & PERIOD PARK",
+  "shortname": "MUSEUM"
+ },
+ {
+  "order": 2,
+  "name": "COLLEGE BUILDING",
+  "shortname": "COLLEGE BUILDING"
+ },
+ {
+  "order": 3,
+  "name": "COLLEGE BUILDING EXTENSION 1",
+  "shortname": "COLLEGE BUILDING EXT. 1"
+ },
+ {
+  "order": 4,
+  "name": "GRADUATE SCHOOL BUILDING 2",
+  "shortname": "GRADUATE SCHOOL 2"
+ },
+ {
+  "order": 5,
+  "name": "Admin Building",
+  "shortname": "ADMIN"
+ },
+ {
+  "order": 6,
+  "name": "ACADEMIC BUILDING 2",
+  "shortname": ""
+ },
+ {
+  "order": 7,
+  "name": "LEARNING RESOURCE CENTER",
+  "shortname": "LIBRARY"
+ },
+ {
+  "order": 8,
+  "name": "GRADUATE SCHOOL",
+  "shortname": ""
+ },
+ {
+  "order": 9,
+  "name": "INTEGRATED SCIENCE LABORATORY BUILDING",
+  "shortname": ""
+ },
+ {
+  "order": 10,
+  "name": "SUPPLY AND PROCUREMENT BUILDING",
+  "shortname": "SUPPLY & PROCUREMENT"
+ },
+ {
+  "order": 11,
+  "name": "SECURITY & GENERAL SERVICES BUILDING",
+  "shortname": "PPF"
+ },
+ {
+  "order": 12,
+  "name": "ELECTRICAL TECHNOLOGY BUILDING",
+  "shortname": ""
+ },
+ {
+  "order": 13,
+  "name": "NSTP/ROTC OFFICE BUILDING",
+  "shortname": "NSTP/ROTC OFFICE"
+ },
+ {
+  "order": 14,
+  "name": "MOTORPOOL",
+  "shortname": ""
+ },
+ {
+  "order": 15,
+  "name": "COLLEGE OF INDUSTRIAL TECHNOLOGY",
+  "shortname": "CIT"
+ },
+ {
+  "order": 16,
+  "name": "COLLEGE OF INDUSTRIAL TECHNOLOGY EXTENSION BUILDING",
+  "shortname": "CIT EXT. BUILDING"
+ },
+ {
+  "order": 17,
+  "name": "IT & Engineering Laboratory Building",
+  "shortname": "IT & Engineering Lab"
+ },
+ {
+  "order": 18,
+  "name": "GENERAL SHOPROOM BUILDING",
+  "shortname": "GSB"
+ },
+ {
+  "order": 19,
+  "name": "COLLEGE OF ARTS AND SCIENCES",
+  "shortname": "CAS"
+ },
+ {
+  "order": 20,
+  "name": "STUDENT SERCVICES BUILDING",
+  "shortname": "STUDENT SERVICES"
+ },
+ {
+  "order": 21,
+  "name": "INTEGRATED HRM BUILDING",
+  "shortname": "HRM BUILDING"
+ },
+ {
+  "order": 22,
+  "name": "COLLEGE OF COMPUTING STUDIES",
+  "shortname": "CCS"
+ },
+ {
+  "order": 23,
+  "name": "ICT Building",
+  "shortname": ""
+ },
+ {
+  "order": 24,
+  "name": "UNIVERSITY FOOD CENTER",
+  "shortname": "UFC"
+ },
+ {
+  "order": 25,
+  "name": "COLLEGE OF ENGINEERING AND ARCHITECTURE EXTENSION BUILDING",
+  "shortname": "CEA"
+ },
+ {
+  "order": 26,
+  "name": "COLLEGE OF ENGINEERING AND ARCHITECTURE",
+  "shortname": "CEA"
+ },
+ {
+  "order": 27,
+  "name": "CE LABORATORY BUILDING 2",
+  "shortname": "CE LAB 2"
+ },
+ {
+  "order": 28,
+  "name": "COLLEGE OF SOCIAL SCIENCES AND PHILOSOPHY",
+  "shortname": "CSSP"
+ },
+ {
+  "order": 29,
+  "name": "FOOD TECHNOLOGY BUILDING",
+  "shortname": ""
+ },
+ {
+  "order": 31,
+  "name": "TECHNICAL VOCATIONAL BUILDING",
+  "shortname": "TECH VOC"
+ },
+ {
+  "order": 32,
+  "name": "CEA ANNEX A",
+  "shortname": "CEA ANNEX A"
+ },
+ {
+  "order": 33,
+  "name": "CEA ANNEX B",
+  "shortname": "CEA ANNEX B"
+ },
+ {
+  "order": 35,
+  "name": "ENGINEERING LABORATORY BUILDING 2",
+  "shortname": "CEA"
+ },
+ {
+  "order": 36,
+  "name": "UNIVERSITY MEDICAL AND DENTAL CLINIC",
+  "shortname": "CLINIC"
+ },
+ {
+  "order": 37,
+  "name": "COLLEGE OF BUSINESS STUDIES BUILDING 1",
+  "shortname": "CBS 1"
+ },
+ {
+  "order": 38,
+  "name": "COLLEGE OF BUSINESS STUDIES BUILDING 3",
+  "shortname": "CBS 3"
+ },
+ {
+  "order": 39,
+  "name": "UNIVERSITY AUDITORIUM",
+  "shortname": "AUDITORIUM"
+ },
+ {
+  "order": 40,
+  "name": "ANNEX",
+  "shortname": ""
+ },
+ {
+  "order": 41,
+  "name": "MIS Office",
+  "shortname": ""
+ },
+ {
+  "order": 42,
+  "name": "CBS 2",
+  "shortname": "CBS 2"
+ },
+ {
+  "order": 43,
+  "name": "MULTIDISCIPLINARY RESOURCE & TOURISM CENTER",
+  "shortname": "TOURISM CENTER"
+ },
+ {
+  "order": 44,
+  "name": "UNIVERSITY HOSTEL",
+  "shortname": "HOSTEL"
+ },
+ {
+  "order": 46,
+  "name": "MULTIPURPOSE HALL AND COOPERATIVE STORE",
+  "shortname": "COOP"
+ },
+ {
+  "order": 47,
+  "name": "GUEST HOUSE & GUEST LOUNGE",
+  "shortname": "GUEST LOUNGE"
+ },
+ {
+  "order": 48,
+  "name": "COLLEGE OF EDUCATION BUILDING 3",
+  "shortname": "COE 3"
+ },
+ {
+  "order": 49,
+  "name": "COLLEGE OF SOCIAL SCIENCES AND PSYCHOLOGY",
+  "shortname": "CSSP"
+ },
+ {
+  "order": 50,
+  "name": "COLLEGE OF ARTS AND SCIENCES",
+  "shortname": "CAS"
+ },
+ {
+  "order": 51,
+  "name": "SHARED-SERVICE FACILITY FOR FABRICATION LABORATORY",
+  "shortname": "SHARED-SERVICE FACILITY"
+ },
+ {
+  "order": 52,
+  "name": "INTEGRATED RESEARCH TRAINING & PRODUCTION CENTER BUILDING 2",
+  "shortname": "IRTPC BUILDING 2"
+ },
+ {
+  "order": 53,
+  "name": "COLLEGE OF NURSING AND ALLIED HEALTH SCIENCES",
+  "shortname": "NURSING BUILDING"
+ },
+ {
+  "order": 54,
+  "name": "PHYSICAL EDUCATION COVERED COURT",
+  "shortname": "PE COVERED COURT"
+ },
+ {
+  "order": 57,
+  "name": "PHYSICAL FACILITIES AND WELLNESS CENTER",
+  "shortname": "CAFE HONORIO"
+ },
+ {
+  "order": 58,
+  "name": "DR. ERNESTO T. NICDAO SPORTS CENTER",
+  "shortname": "SPORT CENTER"
+ },
+ {
+  "order": 59,
+  "name": "PATHFit Faculty",
+  "shortname": "PATHFit Faculty"
+ }
+]
