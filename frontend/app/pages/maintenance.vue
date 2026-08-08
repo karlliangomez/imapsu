@@ -226,7 +226,7 @@ const submitFollowUp = async () => {
     </div>
 
     <div class="grid items-start gap-6 lg:grid-cols-5">
-      <UCard class="lg:col-span-2">
+      <UCard class="lg:col-span-3">
         <template #header>
           <h2 class="text-lg font-semibold text-highlighted">Report an issue</h2>
         </template>
@@ -267,7 +267,7 @@ const submitFollowUp = async () => {
         </form>
       </UCard>
 
-      <div class="lg:col-span-3">
+      <div class="lg:col-span-2">
         <div v-if="status === 'pending'" class="space-y-4">
           <USkeleton v-for="index in 4" :key="index" class="h-28 rounded-lg" />
         </div>
@@ -343,7 +343,7 @@ const submitFollowUp = async () => {
     </div>
   </main>
 
-  <UModal v-model:open="followUpOpen" title="Follow up on ticket" :description="followUpTarget ? `${followUpTarget.category} — ${followUpTarget.propertySpace?.name ?? 'maintenance ticket'}` : undefined">
+  <UModal v-model:open="followUpOpen" class="max-w-xl" title="Follow up on ticket" :description="followUpTarget ? `${followUpTarget.category} — ${followUpTarget.propertySpace?.name ?? 'maintenance ticket'}` : undefined">
     <template #body>
       <form class="space-y-4" @submit.prevent="submitFollowUp">
         <UFormField label="Message" required>

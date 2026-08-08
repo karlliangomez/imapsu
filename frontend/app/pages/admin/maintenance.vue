@@ -476,7 +476,7 @@ const remove = async (ticket: MaintenanceTicket) => {
     />
   </main>
 
-  <UModal v-model:open="formOpen" :title="editing ? 'Edit ticket' : 'New ticket'" :description="editing ? 'Update the details of this maintenance ticket.' : 'Log a maintenance issue reported by a tenant.'">
+  <UModal v-model:open="formOpen" class="max-w-2xl" :title="editing ? 'Edit ticket' : 'New ticket'" :description="editing ? 'Update the details of this maintenance ticket.' : 'Log a maintenance issue reported by a tenant.'">
     <template #body>
       <form class="space-y-4" @submit.prevent="save">
         <UFormField v-if="!editing" label="Tenant and property" required>

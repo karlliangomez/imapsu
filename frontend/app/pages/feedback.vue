@@ -122,7 +122,7 @@ const formatDate = (value?: string) => value
     </div>
 
     <div class="grid items-start gap-6 lg:grid-cols-5">
-      <UCard v-if="auth.isStudent.value" class="lg:col-span-2">
+      <UCard v-if="auth.isStudent.value" class="lg:col-span-3">
         <template #header>
           <h2 class="text-lg font-semibold text-highlighted">Submit feedback</h2>
         </template>
@@ -165,7 +165,7 @@ const formatDate = (value?: string) => value
         </form>
       </UCard>
 
-      <div class="lg:col-span-3" :class="auth.isStudent.value ? '' : 'lg:col-span-5'">
+      <div class="lg:col-span-2" :class="auth.isStudent.value ? '' : 'lg:col-span-5'">
         <div v-if="status === 'pending'" class="space-y-4">
           <USkeleton v-for="index in 4" :key="index" class="h-28 rounded-lg" />
         </div>

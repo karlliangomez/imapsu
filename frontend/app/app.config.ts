@@ -24,7 +24,18 @@ export default defineAppConfig({
     },
     input: {
       slots: {
+        root: 'w-full',
         base: 'w-full rounded-lg border-0 appearance-none placeholder:text-dimmed disabled:cursor-not-allowed disabled:opacity-75 transition-colors'
+      }
+    },
+    select: {
+      slots: {
+        base: 'w-full'
+      }
+    },
+    textarea: {
+      slots: {
+        root: 'w-full'
       }
     }
   }

@@ -198,7 +198,7 @@ const submitRenewal = async () => {
       </UCard>
     </div>
 
-    <UModal v-model:open="renewOpen" title="Renew contract" :description="renewTenancy ? `Submit a renewal intent for ${renewTenancy.propertySpace?.name ?? 'your tenancy'}.` : ''">
+    <UModal v-model:open="renewOpen" class="max-w-xl" title="Renew contract" :description="renewTenancy ? `Submit a renewal intent for ${renewTenancy.propertySpace?.name ?? 'your tenancy'}.` : ''">
       <template #body>
         <form class="space-y-5" @submit.prevent="submitRenewal">
           <UFormField label="Letter of renewal intent" name="letterOfRenewal" required>

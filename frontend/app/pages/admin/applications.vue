@@ -341,7 +341,7 @@ const saveReview = async () => {
       </template>
     </div>
 
-    <UModal v-model:open="reviewOpen" title="Review application" description="Record your evaluation, recommendation and next status for this application.">
+    <UModal v-model:open="reviewOpen" class="max-w-2xl" title="Review application" description="Record your evaluation, recommendation and next status for this application.">
       <template #body>
         <form class="space-y-4" @submit.prevent="saveReview">
           <UFormField label="Status" required>

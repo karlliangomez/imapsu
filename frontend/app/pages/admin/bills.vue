@@ -581,7 +581,7 @@ const confirmReject = async () => {
       </template>
     </div>
 
-    <UModal v-model:open="rejectOpen" title="Reject payment" description="Reject the submitted payment and optionally record why.">
+    <UModal v-model:open="rejectOpen" class="max-w-xl" title="Reject payment" description="Reject the submitted payment and optionally record why.">
       <template #body>
         <form class="space-y-4" @submit.prevent="confirmReject">
           <UAlert color="warning" icon="i-lucide-triangle-alert" title="Bill will be marked Rejected" :description="rejectTarget ? `${formatCurrency(rejectTarget.amount)} bill${rejectTarget.period ? ` for ${rejectTarget.period}` : ''} will be moved out of verification.` : ''" />
@@ -605,7 +605,7 @@ const confirmReject = async () => {
       :entity-label="historyTarget.label"
     />
 
-    <UModal v-model:open="formOpen" :title="editing ? 'Edit bill' : 'Issue bill'" description="Create or update a bill for a tenancy.">
+    <UModal v-model:open="formOpen" class="max-w-3xl" :title="editing ? 'Edit bill' : 'Issue bill'" description="Create or update a bill for a tenancy.">
       <template #body>
         <form class="space-y-4" @submit.prevent="save">
           <UFormField label="Tenancy" required>

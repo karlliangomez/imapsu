@@ -329,7 +329,7 @@ const toggleActive = async (user: DirectoryUser) => {
       </UCard>
     </div>
 
-    <UModal v-model:open="createOpen" title="Create account" description="Provision a new account. New passwords must satisfy the configured password policy.">
+    <UModal v-model:open="createOpen" class="max-w-2xl" title="Create account" description="Provision a new account. New passwords must satisfy the configured password policy.">
       <template #body>
         <form class="space-y-4" @submit.prevent="createUser">
           <UFormField label="Username" required>
@@ -358,7 +358,7 @@ const toggleActive = async (user: DirectoryUser) => {
       </template>
     </UModal>
 
-    <UModal v-model:open="resetOpen" title="Reset password" :description="resetUser ? `Set a new password for ${resetUser.username}.` : ''">
+    <UModal v-model:open="resetOpen" class="max-w-xl" title="Reset password" :description="resetUser ? `Set a new password for ${resetUser.username}.` : ''">
       <template #body>
         <form class="space-y-4" @submit.prevent="submitReset">
           <UFormField label="New password" required>
@@ -375,7 +375,7 @@ const toggleActive = async (user: DirectoryUser) => {
       </template>
     </UModal>
 
-    <UModal v-model:open="editOpen" title="Edit user" :description="editUser ? `Update ${editUser.username}'s account details.` : ''">
+    <UModal v-model:open="editOpen" class="max-w-2xl" title="Edit user" :description="editUser ? `Update ${editUser.username}'s account details.` : ''">
       <template #body>
         <form class="space-y-4" @submit.prevent="saveEdit">
           <UFormField label="Username" required>

@@ -215,7 +215,7 @@ const audienceColor = (audience: Announcement['audience']) => {
       </template>
     </UModal>
 
-    <UModal v-model:open="formOpen" :title="editing ? 'Edit announcement' : 'New announcement'" description="Publish an announcement to your chosen audience.">
+    <UModal v-model:open="formOpen" class="max-w-2xl" :title="editing ? 'Edit announcement' : 'New announcement'" description="Publish an announcement to your chosen audience.">
       <template #body>
         <form class="space-y-4" @submit.prevent="save">
           <UFormField label="Title" required>

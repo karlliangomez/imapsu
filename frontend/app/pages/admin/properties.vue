@@ -389,7 +389,7 @@ const remove = async (property: PropertySpace) => {
       </template>
     </div>
 
-    <UModal v-model:open="formOpen" :title="editing ? 'Edit property space' : 'Add property space'" description="Manage a rentable space on campus.">
+    <UModal v-model:open="formOpen" class="max-w-2xl" :title="editing ? 'Edit property space' : 'Add property space'" description="Manage a rentable space on campus.">
       <template #body>
         <form class="space-y-4" @submit.prevent="save">
           <div class="grid gap-4 sm:grid-cols-2">

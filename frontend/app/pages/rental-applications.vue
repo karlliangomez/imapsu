@@ -228,7 +228,7 @@ const formatDate = (value?: string) => {
         </div>
     </div>
 
-    <UModal v-model:open="formOpen" :title="'New application'" :description="'Apply to rent a vacant campus space. A signed letter of intent is required.'">
+    <UModal v-model:open="formOpen" class="max-w-2xl" :title="'New application'" :description="'Apply to rent a vacant campus space. A signed letter of intent is required.'">
       <template #body>
         <form class="space-y-5" @submit.prevent="submit">
         <UFormField label="Vacant property" name="propertySpace" required>

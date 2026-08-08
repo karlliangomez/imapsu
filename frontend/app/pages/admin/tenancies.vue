@@ -277,7 +277,7 @@ const openHistory = (tenancy: Tenancy) => {
       :entity-label="historyTarget.label"
     />
 
-    <UModal v-model:open="formOpen" :title="editing ? 'Edit tenancy' : 'Create tenancy'" description="Assign a vacant space to a user.">
+    <UModal v-model:open="formOpen" class="max-w-2xl" :title="editing ? 'Edit tenancy' : 'Create tenancy'" description="Assign a vacant space to a user.">
       <template #body>
         <form class="space-y-4" @submit.prevent="save">
           <template v-if="!editing">

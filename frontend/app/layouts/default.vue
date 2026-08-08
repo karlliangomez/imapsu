@@ -232,7 +232,7 @@ const userItems = computed(() => {
       </template>
     </UDrawer>
 
-    <UModal v-model:open="accountOpen" title="Account settings" description="Update your password. Username and email are managed by an administrator.">
+    <UModal v-model:open="accountOpen" class="max-w-xl" title="Account settings" description="Update your password. Username and email are managed by an administrator.">
       <template #body>
         <form class="space-y-4" @submit.prevent="savePassword">
           <div class="rounded-lg border border-default bg-muted/20 px-4 py-3 text-sm">
