@@ -23,6 +23,22 @@
     "waterMeterReading": {
       "type": "decimal"
     },
+    "electricMeterImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "waterMeterImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
     "readingDate": {
       "type": "date",
       "required": true

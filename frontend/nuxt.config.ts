@@ -12,6 +12,11 @@ export default defineNuxtConfig({
     }
   },
   css: ['~/assets/css/main.css'],
+  vite: {
+    optimizeDeps: {
+      include: ['tesseract.js']
+    }
+  },
   runtimeConfig: {
     public: {
       strapiUrl: process.env.NUXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'

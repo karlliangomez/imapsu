@@ -8,11 +8,14 @@
 
 import { factories } from '@strapi/strapi';
 import type { Core } from '@strapi/strapi';
-import { isStaff } from '../../../utils/access';
+import { isStaff, userRole } from '../../../utils/access';
 import { recordStatusChange } from '../../../utils/status-history';
+import { recordAudit } from '../../../utils/audit-log';
 
 const UID = 'api::tenancy.tenancy';
 const PROPERTY_UID = 'api::property-space.property-space';
+const USER_MODEL_UID = 'plugin::users-permissions.user';
+const ROLE_MODEL_UID = 'plugin::users-permissions.role';
 
 // Staff list tenancies so they can record meter readings and manage
 // contracts; updates and creation stay staff-only.
@@ -110,9 +113,10 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       return ctrl.transformResponse(sanitized);
     },
 
-    // Staff only. Creating a tenancy marks the assigned space as Occupied.
+    // Staff only. Creating a tenancy marks the assigned space as Occupied and
+    // promotes an assigned aspiring-tenant account to current-tenant.
     async create(ctx) {
-      const user = ctx.state.user as { id: number } | undefined;
+      const user = ctx.state.user as { id: number; username?: string } | undefined;
       if (!user || !isStaff(user)) {
         return ctx.forbidden();
       }
@@ -124,7 +128,7 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       await ctrl.validateInput(data, ctx);
       const sanitizedData = (await ctrl.sanitizeInput(data, ctx)) as Record<string, unknown>;
 
-      const entity = await service().create({ data: sanitizedData, populate: { propertySpace: true } });
+      const entity = await service().create({ data: sanitizedData, populate: { propertySpace: true, user: true } });
       if (!entity) {
         return ctx.badRequest('Could not create the tenancy');
       }
@@ -141,6 +145,43 @@ export default factories.createCoreController(UID, ({ strapi }) => {
             .update({ documentId: String(propertyId), data: { space_status: 'Occupied' } });
         } catch {
           // The property may have been removed; leave it as-is.
+        }
+      }
+
+      // Promote an aspiring-tenant account to current-tenant when it is
+      // assigned to the new tenancy.
+      const assignedUser = (entity as { user?: { id?: number } | number | null }).user;
+      const assignedUserId =
+        typeof assignedUser === 'object' && assignedUser != null ? assignedUser.id : assignedUser;
+      if (typeof assignedUserId === 'number' && Number.isInteger(assignedUserId)) {
+        try {
+          const target = await strapi.db.query(USER_MODEL_UID).findOne({
+            where: { id: assignedUserId },
+            populate: { role: true },
+          });
+          const currentRoleType = target?.role?.type ?? target?.role?.name ?? null;
+          if (currentRoleType === 'aspiring-tenant') {
+            const currentTenantRole = await strapi.db.query(ROLE_MODEL_UID).findOne({
+              where: { type: 'current-tenant' },
+            });
+            if (currentTenantRole) {
+              await strapi
+                .plugin('users-permissions')
+                .service('user')
+                .edit(assignedUserId, { role: currentTenantRole.id });
+
+              await recordAudit(strapi, {
+                action: 'role-changed',
+                entityType: 'user',
+                entityId: assignedUserId,
+                entityLabel: target?.username ?? String(assignedUserId),
+                description: `Changed ${target?.username ?? 'user'}'s role from aspiring-tenant to current-tenant (tenancy created)`,
+                actor: { actorId: user.id, actorUsername: user.username ?? null, actorRole: userRole(user) },
+              });
+            }
+          }
+        } catch {
+          // The user may have been removed; leave the role as-is.
         }
       }
 

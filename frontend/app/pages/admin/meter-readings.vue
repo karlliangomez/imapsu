@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { StrapiFile } from '~/types/auth'
+
 definePageMeta({
   middleware: ['auth', 'role'],
   roles: ['oas', 'admin']
@@ -12,6 +14,8 @@ type MeterReading = {
   readingDate: string
   notes?: string
   createdAt?: string
+  electricMeterImage?: StrapiFile | null
+  waterMeterImage?: StrapiFile | null
   tenancy?: {
     documentId?: string
     user?: { username?: string } | null
@@ -49,6 +53,8 @@ const { data, status, error, refresh } = await useFetch<ListResponse<MeterReadin
     'populate[tenancy][populate][propertySpace]': true,
     'populate[tenancy][populate][user]': true,
     'populate[recordedBy]': true,
+    'populate[electricMeterImage]': true,
+    'populate[waterMeterImage]': true,
     sort: 'readingDate:desc',
     'pagination[pageSize]': 100
   }
@@ -82,6 +88,22 @@ const submitting = ref(false)
 const formError = ref('')
 const editing = ref<MeterReading | null>(null)
 
+const electricPhoto = ref<File | null>(null)
+const waterPhoto = ref<File | null>(null)
+const electricRemoved = ref(false)
+const waterRemoved = ref(false)
+const electricInitialSrc = ref<string | null>(null)
+const waterInitialSrc = ref<string | null>(null)
+
+const resetPhotos = () => {
+  electricPhoto.value = null
+  waterPhoto.value = null
+  electricRemoved.value = false
+  waterRemoved.value = false
+  electricInitialSrc.value = null
+  waterInitialSrc.value = null
+}
+
 const clearForm = () => {
   Object.assign(form, {
     tenancy: '',
@@ -101,13 +123,24 @@ const openEdit = (reading: MeterReading) => {
     waterMeterReading: reading.waterMeterReading != null ? String(reading.waterMeterReading) : '',
     notes: reading.notes ?? ''
   })
+  resetPhotos()
+  electricInitialSrc.value = reading.electricMeterImage ? `${baseURL}${reading.electricMeterImage.url}` : null
+  waterInitialSrc.value = reading.waterMeterImage ? `${baseURL}${reading.waterMeterImage.url}` : null
   formError.value = ''
 }
 
 const cancelEdit = () => {
   editing.value = null
   clearForm()
+  resetPhotos()
   formError.value = ''
+}
+
+const uploadPhoto = async (photo: File) => {
+  const form = new FormData()
+  form.append('files', photo)
+  const uploaded = await $api<StrapiFile[]>('/api/upload', { method: 'POST', body: form })
+  return uploaded[0].id
 }
 
 const save = async () => {
@@ -122,13 +155,28 @@ const save = async () => {
   }
   submitting.value = true
   try {
+    let electricMeterImage: number | null = editing.value?.electricMeterImage?.id ?? null
+    let waterMeterImage: number | null = editing.value?.waterMeterImage?.id ?? null
+    if (electricPhoto.value) {
+      electricMeterImage = await uploadPhoto(electricPhoto.value)
+    } else if (electricRemoved.value) {
+      electricMeterImage = null
+    }
+    if (waterPhoto.value) {
+      waterMeterImage = await uploadPhoto(waterPhoto.value)
+    } else if (waterRemoved.value) {
+      waterMeterImage = null
+    }
+
     const body = {
       data: {
         tenancy: form.tenancy,
         readingDate: form.readingDate,
         electricMeterReading: form.electricMeterReading === '' ? undefined : Number(form.electricMeterReading),
         waterMeterReading: form.waterMeterReading === '' ? undefined : Number(form.waterMeterReading),
-        notes: form.notes?.trim() || undefined
+        notes: form.notes?.trim() || undefined,
+        electricMeterImage,
+        waterMeterImage
       }
     }
     if (editing.value) {
@@ -177,13 +225,13 @@ const isMine = (reading: MeterReading) => reading.recordedBy?.id === auth.user.v
       <div>
         <p class="imapsu-page-eyebrow mb-2">Management</p>
         <h1 class="imapsu-page-heading">Meter readings</h1>
-        <p class="mt-2 max-w-xl text-muted">Record electric and water readings against active tenancies. Readings feed the next billing cycle.</p>
+        <p class="mt-2 max-w-xl text-muted">Record electric and water readings against active tenancies. Upload a meter photo and iMapSU reads the value automatically — if it can't, you'll be asked to type it in. Readings feed the next billing cycle.</p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />
     </div>
 
     <div class="grid items-start gap-6 lg:grid-cols-5">
-      <UCard class="lg:col-span-2">
+      <UCard class="lg:col-span-3">
         <template #header>
           <h2 class="text-lg font-semibold text-highlighted">{{ editing ? 'Edit reading' : 'Record reading' }}</h2>
         </template>
@@ -199,11 +247,34 @@ const isMine = (reading: MeterReading) => reading.recordedBy?.id === auth.user.v
 
           <div class="grid gap-4 sm:grid-cols-2">
             <UFormField label="Electric (kWh)">
-              <UInput v-model="form.electricMeterReading" type="number" min="0" step="0.001" placeholder="e.g. 1045" />
+              <UInput v-model="form.electricMeterReading" type="number" min="0" step="any" placeholder="e.g. 1045" />
             </UFormField>
             <UFormField label="Water (m³)">
-              <UInput v-model="form.waterMeterReading" type="number" min="0" step="0.001" placeholder="e.g. 512" />
+              <UInput v-model="form.waterMeterReading" type="number" min="0" step="any" placeholder="e.g. 512" />
             </UFormField>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <MeterPhotoField
+              title="Electric meter"
+              hint="Upload a photo of the electric meter display and the reading is captured automatically."
+              unit="kWh"
+              icon="i-lucide-zap"
+              :initial-src="electricInitialSrc"
+              @file-change="file => (electricPhoto = file)"
+              @remove-image="electricRemoved = true"
+              @reading="value => (form.electricMeterReading = String(value))"
+            />
+            <MeterPhotoField
+              title="Water meter"
+              hint="Upload a photo of the water meter display and the reading is captured automatically."
+              unit="m³"
+              icon="i-lucide-droplets"
+              :initial-src="waterInitialSrc"
+              @file-change="file => (waterPhoto = file)"
+              @remove-image="waterRemoved = true"
+              @reading="value => (form.waterMeterReading = String(value))"
+            />
           </div>
 
           <UFormField label="Notes">
@@ -221,7 +292,7 @@ const isMine = (reading: MeterReading) => reading.recordedBy?.id === auth.user.v
         </form>
       </UCard>
 
-      <div class="lg:col-span-3">
+      <div class="lg:col-span-2">
         <div v-if="status === 'pending'" class="space-y-4">
           <USkeleton v-for="index in 4" :key="index" class="h-24 rounded-lg" />
         </div>
@@ -258,6 +329,15 @@ const isMine = (reading: MeterReading) => reading.recordedBy?.id === auth.user.v
                 <dd class="mt-0.5 font-semibold text-highlighted">{{ reading.waterMeterReading != null ? `${reading.waterMeterReading} m³` : '—' }}</dd>
               </div>
             </dl>
+
+            <div v-if="reading.electricMeterImage || reading.waterMeterImage" class="mt-3 grid grid-cols-2 gap-2">
+              <a v-if="reading.electricMeterImage" :href="`${baseURL}${reading.electricMeterImage.url}`" target="_blank" rel="noopener">
+                <img :src="`${baseURL}${reading.electricMeterImage.url}`" :alt="reading.electricMeterImage.name || 'Electric meter photo'" class="h-24 w-full rounded-lg object-cover transition-transform hover:scale-[1.02]" />
+              </a>
+              <a v-if="reading.waterMeterImage" :href="`${baseURL}${reading.waterMeterImage.url}`" target="_blank" rel="noopener">
+                <img :src="`${baseURL}${reading.waterMeterImage.url}`" :alt="reading.waterMeterImage.name || 'Water meter photo'" class="h-24 w-full rounded-lg object-cover transition-transform hover:scale-[1.02]" />
+              </a>
+            </div>
 
             <p v-if="reading.notes" class="mt-4 rounded-lg bg-muted/20 px-3 py-2 text-sm text-muted">{{ reading.notes }}</p>
           </UCard>

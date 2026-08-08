@@ -808,6 +808,7 @@ export interface ApiMeterReadingMeterReading
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    electricMeterImage: Schema.Attribute.Media<'images'>;
     electricMeterReading: Schema.Attribute.Decimal;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -826,6 +827,7 @@ export interface ApiMeterReadingMeterReading
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    waterMeterImage: Schema.Attribute.Media<'images'>;
     waterMeterReading: Schema.Attribute.Decimal;
   };
 }
