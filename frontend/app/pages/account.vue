@@ -232,16 +232,18 @@ const upcomingFeatures = computed(() => {
           <h2 class="text-lg font-semibold text-highlighted">Profile</h2>
         </template>
 
-        <div class="flex flex-col items-center gap-4">
+        <div class="flex flex-col items-center gap-5">
           <UAvatar
             :src="auth.avatarUrl.value ?? undefined"
             :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()"
             :alt="auth.displayName.value"
             size="3xl"
             color="primary"
+            class="!size-40"
+            :ui="{ root: '!size-40', fallback: '!text-6xl', icon: '!text-5xl' }"
           />
           <div class="text-center">
-            <p class="font-semibold text-highlighted">{{ auth.displayName.value }}</p>
+            <p class="text-xl font-semibold text-highlighted">{{ auth.displayName.value }}</p>
             <p class="text-sm text-muted">@{{ auth.user.value?.username }}</p>
           </div>
           <UBadge :color="roleColor" variant="subtle">{{ roleLabel }}</UBadge>

@@ -90,7 +90,7 @@ const userItems = computed(() => {
       avatar: {
         src: auth.avatarUrl.value ?? undefined,
         text: (auth.displayName.value ?? '?').charAt(0).toUpperCase(),
-        size: 'lg'
+        size: 'xl'
       }
     },
     {
@@ -153,7 +153,7 @@ const userItems = computed(() => {
         <div v-if="auth.isAuthenticated.value" class="border-t border-maroon-950/60 px-3 py-3">
           <div v-if="!sidebarCollapsed" class="space-y-3">
             <div class="flex items-center gap-3">
-              <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="lg" />
+              <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="2xl" />
               <div class="min-w-0">
                 <p class="truncate text-base font-semibold text-white">{{ auth.displayName.value }}</p>
                 <p v-if="auth.user.value?.email" class="truncate text-xs text-maroon-200">{{ auth.user.value.email }}</p>
@@ -162,7 +162,7 @@ const userItems = computed(() => {
             <UButton block variant="subtle" color="error" icon="i-lucide-log-out" label="Sign out" @click="auth.logout(); navigateTo('/')" />
           </div>
           <div v-else class="flex flex-col items-center gap-3">
-            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="lg" :title="auth.displayName.value" />
+            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="2xl" :title="auth.displayName.value" />
             <UButton square variant="ghost" color="error" icon="i-lucide-log-out" aria-label="Sign out" :title="'Sign out'" class="text-maroon-100 hover:bg-white/10 hover:text-white" @click="auth.logout(); navigateTo('/')" />
           </div>
         </div>
@@ -189,7 +189,7 @@ const userItems = computed(() => {
                     color="neutral"
                     variant="ghost"
                     :label="auth.user.value?.username"
-                    :avatar="{ src: auth.avatarUrl.value ?? undefined, text: (auth.displayName.value ?? '?').charAt(0).toUpperCase(), size: 'md' }"
+                    :avatar="{ src: auth.avatarUrl.value ?? undefined, text: (auth.displayName.value ?? '?').charAt(0).toUpperCase(), size: 'lg' }"
                     trailing-icon="i-lucide-chevron-down"
                   />
                 </UDropdownMenu>
@@ -228,7 +228,7 @@ const userItems = computed(() => {
       <template #footer>
         <div v-if="auth.isAuthenticated.value" class="space-y-3">
           <div class="flex items-center gap-3">
-            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="lg" />
+            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="2xl" />
             <div class="min-w-0">
               <p class="truncate text-base font-semibold text-white">{{ auth.displayName.value }}</p>
               <p v-if="auth.user.value?.email" class="truncate text-xs text-maroon-200">{{ auth.user.value.email }}</p>
