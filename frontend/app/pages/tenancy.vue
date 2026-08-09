@@ -4,6 +4,8 @@ definePageMeta({
   roles: ['current-tenant']
 })
 
+type UploadedFile = { id: number; url?: string; name?: string }
+
 type Tenancy = {
   id: number | string
   documentId?: string
@@ -11,7 +13,7 @@ type Tenancy = {
   endDate?: string
   status: 'Active' | 'Ended' | 'Terminated'
   createdAt?: string
-  propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string; floor?: string; monthlyRent?: number | string } | null
+  propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string; floor?: string; monthlyRent?: number | string; photos?: UploadedFile[] | null } | null
 }
 
 type RenewalIntent = {
@@ -26,7 +28,7 @@ type RenewalIntent = {
 
 type ListResponse<T> = { data: T[] }
 
-useHead({ title: 'My tenancy | iMapSU' })
+useHead({ title: 'My Tenancy | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()
@@ -37,7 +39,7 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Tenancy>>('
   baseURL,
   headers,
   query: {
-    'populate[propertySpace]': true,
+    'populate[propertySpace][populate][photos]': true,
     sort: 'createdAt:desc',
     'pagination[pageSize]': 10
   }
@@ -145,6 +147,62 @@ const submitRenewal = async () => {
     renewSubmitting.value = false
   }
 }
+
+const tenancyKey = (tenancy: Tenancy) => String(tenancy.documentId ?? tenancy.id)
+const photoUploadingFor = ref<Record<string, boolean>>({})
+const photoSavingFor = ref<Record<string, boolean>>({})
+const photoErrorFor = ref<Record<string, string>>({})
+
+const savePhotos = async (tenancy: Tenancy, ids: number[]) => {
+  await $api(`/api/tenancies/${tenancyKey(tenancy)}`, {
+    method: 'PUT',
+    body: { data: { photos: ids } }
+  })
+}
+
+const uploadPhotos = async (tenancy: Tenancy, event: Event) => {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = ''
+  if (!files.length) return
+  const key = tenancyKey(tenancy)
+  photoUploadingFor.value[key] = true
+  photoErrorFor.value[key] = ''
+  try {
+    const formData = new FormData()
+    for (const file of files) formData.append('files', file)
+    const uploaded = await $api<UploadedFile[]>('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+    const ids = [...(tenancy.propertySpace?.photos ?? []), ...(uploaded ?? [])]
+      .filter(photo => photo?.id != null)
+      .map(photo => photo.id)
+    await savePhotos(tenancy, ids)
+    toast.add({ title: 'Photos updated', description: 'Your space photos were saved and now appear on the campus map.', color: 'success', icon: 'i-lucide-check-circle' })
+    await refresh()
+  } catch (err) {
+    photoErrorFor.value[key] = getErrorMessage(err)
+  } finally {
+    photoUploadingFor.value[key] = false
+  }
+}
+
+const removePhoto = async (tenancy: Tenancy, photo: UploadedFile) => {
+  const key = tenancyKey(tenancy)
+  photoSavingFor.value[key] = true
+  photoErrorFor.value[key] = ''
+  try {
+    const ids = (tenancy.propertySpace?.photos ?? []).filter(item => item.id !== photo.id).map(item => item.id)
+    await savePhotos(tenancy, ids)
+    toast.add({ title: 'Photo removed', color: 'success', icon: 'i-lucide-check-circle' })
+    await refresh()
+  } catch (err) {
+    photoErrorFor.value[key] = getErrorMessage(err)
+  } finally {
+    photoSavingFor.value[key] = false
+  }
+}
 </script>
 
 <template>
@@ -152,7 +210,7 @@ const submitRenewal = async () => {
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Current tenant</p>
-        <h1 class="imapsu-page-heading">My tenancy</h1>
+        <h1 class="imapsu-page-heading">My Tenancy</h1>
         <p class="mt-2 max-w-xl text-muted">Details of the tenancy contract attached to your account.</p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refreshAll" />
@@ -184,6 +242,41 @@ const submitRenewal = async () => {
           <div><dt class="text-xs text-muted">End date</dt><dd class="font-medium text-highlighted">{{ formatDate(tenancy.endDate) || '—' }}</dd></div>
           <div class="col-span-2"><dt class="text-xs text-muted">Monthly rent</dt><dd class="font-semibold text-primary">{{ formatCurrency(tenancy.propertySpace?.monthlyRent) }}</dd></div>
         </dl>
+
+        <div class="mt-5 border-t border-default pt-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm font-medium text-highlighted">Space photos</p>
+            <p class="text-xs text-muted">Shown on the campus map so students can see your space.</p>
+          </div>
+          <div class="mt-3 flex flex-wrap items-start gap-3">
+            <div v-if="tenancy.propertySpace?.photos?.length" class="flex flex-wrap gap-2">
+              <div v-for="photo in tenancy.propertySpace.photos" :key="photo.id" class="group relative">
+                <img :src="`${baseURL}${photo.url}`" :alt="photo.name || 'Space photo'" class="h-20 w-20 rounded-lg object-cover" />
+                <button
+                  v-if="tenancy.status === 'Active'"
+                  type="button"
+                  class="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-background text-muted shadow hover:text-error"
+                  :disabled="photoSavingFor[tenancyKey(tenancy)]"
+                  :aria-label="`Remove ${photo.name || 'photo'}`"
+                  @click="removePhoto(tenancy, photo)"
+                >
+                  <UIcon name="i-lucide-x" class="size-3" />
+                </button>
+              </div>
+            </div>
+            <label
+              v-if="tenancy.status === 'Active'"
+              class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-default px-3 py-2 text-sm font-medium text-primary hover:border-primary"
+              :class="{ 'pointer-events-none opacity-60': photoUploadingFor[tenancyKey(tenancy)] }"
+            >
+              <UIcon :name="photoUploadingFor[tenancyKey(tenancy)] ? 'i-lucide-loader-2' : 'i-lucide-image-plus'" class="size-4" :class="{ 'animate-spin': photoUploadingFor[tenancyKey(tenancy)] }" />
+              {{ photoUploadingFor[tenancyKey(tenancy)] ? 'Uploading…' : 'Add photos' }}
+              <input type="file" accept="image/*" multiple class="sr-only" :disabled="photoUploadingFor[tenancyKey(tenancy)]" @change="uploadPhotos(tenancy, $event)" />
+            </label>
+            <p v-if="!tenancy.propertySpace?.photos?.length && tenancy.status !== 'Active'" class="text-sm text-muted">No photos uploaded.</p>
+          </div>
+          <p v-if="photoErrorFor[tenancyKey(tenancy)]" class="mt-2 text-xs text-error">{{ photoErrorFor[tenancyKey(tenancy)] }}</p>
+        </div>
 
         <div v-if="tenancy.status === 'Active'" class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
           <template v-if="pendingRenewalFor(tenancy)">

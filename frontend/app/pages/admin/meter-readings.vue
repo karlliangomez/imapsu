@@ -33,7 +33,7 @@ type Tenancy = {
 
 type ListResponse<T> = { data: T[] }
 
-useHead({ title: 'Meter readings | iMapSU' })
+useHead({ title: 'Meter Readings | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()
@@ -224,7 +224,7 @@ const isMine = (reading: MeterReading) => reading.recordedBy?.id === auth.user.v
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Management</p>
-        <h1 class="imapsu-page-heading">Meter readings</h1>
+        <h1 class="imapsu-page-heading">Meter Readings</h1>
         <p class="mt-2 max-w-xl text-muted">Record electric and water readings against active tenancies. Upload a meter photo and iMapSU reads the value automatically — if it can't, you'll be asked to type it in. Readings feed the next billing cycle.</p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />

@@ -4,7 +4,7 @@ definePageMeta({
   roles: ['admin']
 })
 
-useHead({ title: 'Database backups | iMapSU' })
+useHead({ title: 'Database Backups | iMapSU' })
 
 type BackupMeta = {
   name: string
@@ -111,7 +111,7 @@ const formatDate = (value: string) =>
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Administration</p>
-        <h1 class="imapsu-page-heading">Database backups</h1>
+        <h1 class="imapsu-page-heading">Database Backups</h1>
         <p class="mt-2 max-w-xl text-muted">
           Create on-demand database backups, download dumps, and restore the database from an uploaded backup file.
         </p>

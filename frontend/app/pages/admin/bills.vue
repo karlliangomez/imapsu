@@ -41,7 +41,7 @@ type MeterReading = {
   readingDate?: string
 }
 
-useHead({ title: 'Manage bills | iMapSU' })
+useHead({ title: 'Manage Bills | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()

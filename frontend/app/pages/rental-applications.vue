@@ -17,7 +17,7 @@ type RentalApplication = {
 type PropertySpace = { documentId: string; name: string; propertyCode: string; building: string; monthlyRent?: number | string }
 type ListResponse<T> = { data: T[] }
 
-useHead({ title: 'Rental applications | iMapSU' })
+useHead({ title: 'Rental Applications | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()
@@ -174,7 +174,7 @@ const formatDate = (value?: string) => {
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Aspiring tenant</p>
-        <h1 class="imapsu-page-heading">Rental applications</h1>
+        <h1 class="imapsu-page-heading">Rental Applications</h1>
         <p class="mt-2 max-w-xl text-muted">Apply to rent a vacant space and track the status of your applications.</p>
       </div>
       <div class="flex items-center gap-2">

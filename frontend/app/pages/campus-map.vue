@@ -20,7 +20,7 @@ const { baseURL, authHeaders, $api, getErrorMessage } = useStrapi()
 const { data: propertiesData, status } = await useFetch<ListResponse<MapProperty>>('/api/property-spaces', {
   baseURL,
   headers: authHeaders,
-  query: { sort: 'propertyCode:asc', 'pagination[pageSize]': 500 }
+  query: { sort: 'propertyCode:asc', 'pagination[pageSize]': 500, 'populate[photos]': true }
 })
 
 const { data: labelsData, refresh: refreshLabels } = await useFetch<ListResponse<MapLabel>>('/api/map-labels', {
@@ -270,7 +270,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
         </div>
 
         <p class="mt-3 text-sm text-muted">
-          Explore the campus from above. Buildings render white; a green edge means at least one vacant space is available and a maroon edge means the building is fully occupied.
+          Explore the campus from above. Buildings tint green when at least one space is vacant and maroon when fully occupied; buildings without vacancy data stay white.
         </p>
         <p class="mt-2 flex items-center gap-1.5 text-xs text-muted">
           <UIcon name="i-lucide-mouse-pointer-click" class="size-3.5" />
@@ -376,6 +376,15 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
                 <p v-if="property.businessName" class="mt-1.5 text-sm font-semibold text-primary">
                   {{ property.businessName }}
                 </p>
+                <div v-if="property.photos?.length" class="mt-2 flex gap-1.5 overflow-x-auto">
+                  <img
+                    v-for="photo in property.photos"
+                    :key="photo.id"
+                    :src="`${baseURL}${photo.url}`"
+                    :alt="photo.name || property.name"
+                    class="h-16 w-16 shrink-0 rounded-md object-cover"
+                  />
+                </div>
                 <p v-if="property.productsServices" class="mt-1 text-xs leading-relaxed text-toned">
                   <span class="font-medium text-highlighted">Products / services: </span>{{ property.productsServices }}
                 </p>
@@ -418,7 +427,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
           Fully occupied
         </span>
       </div>
-      <p class="mt-2 text-[10px] text-muted">Building edges read ● Vacant / ● Occupied</p>
+      <p class="mt-2 text-[10px] text-muted">Building color reads ● Vacant / ● Occupied</p>
     </div>
 
     <div class="absolute bottom-4 left-1/2 z-10 w-64 -translate-x-1/2">

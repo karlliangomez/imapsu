@@ -4,7 +4,7 @@ definePageMeta({
   roles: ['admin']
 })
 
-useHead({ title: 'System monitoring | iMapSU' })
+useHead({ title: 'System Monitoring | iMapSU' })
 
 type AuditEntry = {
   id: number
@@ -95,7 +95,7 @@ watch(health, () => { lastChecked.value = new Date().toLocaleTimeString() })
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Administration</p>
-        <h1 class="imapsu-page-heading">System monitoring</h1>
+        <h1 class="imapsu-page-heading">System Monitoring</h1>
         <p class="mt-2 max-w-xl text-muted">
           Live health of the platform: availability, resource usage, sign-in security and server errors. Refreshes automatically every 30 seconds.
         </p>

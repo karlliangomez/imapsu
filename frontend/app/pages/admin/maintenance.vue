@@ -28,7 +28,7 @@ const STATUSES: MaintenanceTicket['status'][] = ['Pending', 'In Progress', 'Comp
 const CATEGORIES = ['Plumbing', 'Electrical', 'Structural', 'Internet', 'Other'] as const
 const PRIORITIES: MaintenanceTicket['priority'][] = ['Low', 'Normal', 'High', 'Critical']
 
-useHead({ title: 'Maintenance tickets | iMapSU' })
+useHead({ title: 'Maintenance Tickets | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()
@@ -338,7 +338,7 @@ const remove = async (ticket: MaintenanceTicket) => {
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Management</p>
-        <h1 class="imapsu-page-heading">Maintenance tickets</h1>
+        <h1 class="imapsu-page-heading">Maintenance Tickets</h1>
         <p class="mt-2 max-w-xl text-muted">Monitor tenant-reported issues and update their status as they are handled.</p>
       </div>
       <div class="flex items-center gap-3">

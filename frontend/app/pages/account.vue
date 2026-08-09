@@ -5,7 +5,7 @@ definePageMeta({
   middleware: 'auth'
 })
 
-useHead({ title: 'My account | iMapSU' })
+useHead({ title: 'My Account | iMapSU' })
 
 const auth = useAuth()
 const { $api, getErrorMessage } = useStrapi()
@@ -221,7 +221,7 @@ const upcomingFeatures = computed(() => {
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Your account</p>
-        <h1 class="imapsu-page-heading">My account</h1>
+        <h1 class="imapsu-page-heading">My Account</h1>
         <p class="mt-2 max-w-xl text-muted">Manage your profile and access role-specific features.</p>
       </div>
     </div>

@@ -4,7 +4,7 @@ definePageMeta({
   roles: ['admin']
 })
 
-useHead({ title: 'System settings | iMapSU' })
+useHead({ title: 'System Settings | iMapSU' })
 
 type SystemSettings = {
   id?: number
@@ -129,7 +129,7 @@ const statusOptions = [
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Administration</p>
-        <h1 class="imapsu-page-heading">System settings</h1>
+        <h1 class="imapsu-page-heading">System Settings</h1>
         <p class="mt-2 max-w-xl text-muted">
           Configure system-wide behaviour: account policy, notification preferences, upload restrictions and the database backup schedule.
         </p>

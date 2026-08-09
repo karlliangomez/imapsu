@@ -30,7 +30,7 @@ type PropertySpace = {
 
 type ListResponse<T> = { data: T[] }
 
-useHead({ title: 'Manage properties | iMapSU' })
+useHead({ title: 'Manage Properties | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()
@@ -413,7 +413,7 @@ const remove = async (property: PropertySpace) => {
             </UFormField>
           </div>
 
-          <UFormField label="Photos" description="Space photos shown on the campus map and property directory.">
+          <UFormField label="Photos" description="Space photos shown on the campus map. Tenants can also manage these from their tenancy page.">
             <div class="flex flex-wrap items-center gap-3">
               <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-default px-3 py-2 text-sm font-medium text-primary hover:border-primary" :class="{ 'pointer-events-none opacity-60': photoUploading }">
                 <UIcon :name="photoUploading ? 'i-lucide-loader-2' : 'i-lucide-image-plus'" class="size-4" :class="{ 'animate-spin': photoUploading }" />

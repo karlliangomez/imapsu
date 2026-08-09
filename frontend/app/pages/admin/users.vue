@@ -15,7 +15,7 @@ type DirectoryUser = {
   role?: { documentId?: string; name?: string; type?: string } | null
 }
 
-useHead({ title: 'Manage users | iMapSU' })
+useHead({ title: 'Manage Users | iMapSU' })
 
 const ROLE_DOC_IDS: Record<string, string> = {
   student: 'lfabw04fhi1fe91oh0heewup',

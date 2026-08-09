@@ -4,7 +4,7 @@ definePageMeta({
   roles: ['admin']
 })
 
-useHead({ title: 'Audit logs | iMapSU' })
+useHead({ title: 'Audit Logs | iMapSU' })
 
 type AuditEntry = {
   id: number
@@ -91,7 +91,7 @@ const formatDate = (value?: string) => value
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Administration</p>
-        <h1 class="imapsu-page-heading">Audit logs</h1>
+        <h1 class="imapsu-page-heading">Audit Logs</h1>
         <p class="mt-2 max-w-xl text-muted">
           A record of administrative actions, account changes, sign-ins and server errors. Entries are written server-side and cannot be edited or deleted.
         </p>

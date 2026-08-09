@@ -238,6 +238,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'api::bill.bill.update',
     'api::tenancy.tenancy.find',
     'api::tenancy.tenancy.findOne',
+    'api::tenancy.tenancy.update',
     'api::renewal-intent.renewal-intent.find',
     'api::renewal-intent.renewal-intent.findOne',
     'api::renewal-intent.renewal-intent.create',

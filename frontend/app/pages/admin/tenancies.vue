@@ -19,7 +19,7 @@ type Tenancy = {
 type ListResponse<T> = { data: T[] }
 type DirectoryUser = { id: number; username: string; email: string; role?: { type?: string } | null }
 
-useHead({ title: 'Manage tenancies | iMapSU' })
+useHead({ title: 'Manage Tenancies | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()

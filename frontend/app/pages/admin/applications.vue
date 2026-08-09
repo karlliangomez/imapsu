@@ -36,7 +36,7 @@ type Item = ApplicationItem | RenewalItem
 
 type ListResponse<T> = { data: T[] }
 
-useHead({ title: 'Review applications | iMapSU' })
+useHead({ title: 'Review Applications | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()
@@ -258,7 +258,7 @@ const saveReview = async () => {
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Management</p>
-        <h1 class="imapsu-page-heading">Rental applications</h1>
+        <h1 class="imapsu-page-heading">Rental Applications</h1>
         <p class="mt-2 max-w-xl text-muted">Review applications and contract renewals, inspect letters, record an evaluation and update their status.</p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refreshAll" />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-useHead({ title: 'Create account | iMapSU' })
+useHead({ title: 'Create Account | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()

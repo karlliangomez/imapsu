@@ -19,7 +19,7 @@ type Feedback = {
 
 type ListResponse<T> = { data: T[] }
 
-useHead({ title: 'Student feedback | iMapSU' })
+useHead({ title: 'Student Feedback | iMapSU' })
 
 const auth = useAuth()
 const toast = useToast()
@@ -157,7 +157,7 @@ const saveAction = async (item: Feedback) => {
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Management</p>
-        <h1 class="imapsu-page-heading">Student feedback</h1>
+        <h1 class="imapsu-page-heading">Student Feedback</h1>
         <p class="mt-2 max-w-xl text-muted">Review what students are saying about stall tenants, spot recurring concerns, and record the action taken. Original feedback is immutable.</p>
       </div>
       <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="status === 'pending'" @click="refresh" />

@@ -38,6 +38,18 @@ function extractBusinessFields(data: Record<string, unknown>): Record<string, un
   return fields;
 }
 
+// Space photos are uploaded by the tenant themselves and stored on the linked
+// property space, following the same pattern as the business details.
+const PHOTO_FIELD = 'photos';
+
+function extractPhotos(data: Record<string, unknown>): number[] | undefined {
+  if (!(PHOTO_FIELD in data)) return undefined;
+  const value = data[PHOTO_FIELD];
+  delete data[PHOTO_FIELD];
+  if (!Array.isArray(value)) return undefined;
+  return value.map((id) => Number(id)).filter((id) => Number.isInteger(id));
+}
+
 function businessPatch(fields: Record<string, unknown>): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) {
@@ -111,16 +123,38 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       return ctrl.transformResponse(sanitized);
     },
 
-    // Staff only. Updates record status changes in the audit log.
+    // Staff can update any tenancy detail. Tenants may only replace the space
+    // photos of their own tenancy; the photos are stored on the linked
+    // property space so the campus map keeps showing them unchanged.
     async update(ctx) {
       const user = ctx.state.user as { id: number } | undefined;
-      if (!user || !isStaff(user)) {
-        return ctx.forbidden('Only staff can update tenancies');
+      if (!user) {
+        return ctx.unauthorized();
       }
 
+      const staff = isStaff(user);
       const body = (ctx.request.body ?? {}) as Record<string, unknown>;
       const data = (body.data ?? body) as Record<string, unknown>;
       const businessFields = extractBusinessFields(data);
+      const photos = extractPhotos(data);
+
+      if (!staff) {
+        if (Object.keys(data).length > 0) {
+          return ctx.forbidden('You can only update photos on your own tenancy');
+        }
+        const current = (await service().findOne(ctx.params.id, {
+          fields: ['id', 'documentId'],
+          populate: { user: { fields: ['id'] } },
+        })) as { user?: { id?: number } | number | null } | null;
+        if (!current) {
+          return ctx.notFound();
+        }
+        const ownerId =
+          typeof current.user === 'object' && current.user != null ? current.user.id : (current.user as number | undefined);
+        if (ownerId !== user.id) {
+          return ctx.forbidden('You can only update your own tenancy');
+        }
+      }
 
       const ctrl = base(this);
       await ctrl.validateInput(data, ctx);
@@ -146,8 +180,11 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         });
       }
 
-      // Write business details to the linked property space when supplied.
+      // Write business details and space photos to the linked property space.
       const patch = businessPatch(businessFields);
+      if (photos !== undefined) {
+        patch.photos = photos;
+      }
       if (Object.keys(patch).length > 0) {
         let propertyId = await propertyIdOf(sanitizedData.propertySpace);
         if (propertyId == null) {
@@ -182,6 +219,7 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       const body = (ctx.request.body ?? {}) as Record<string, unknown>;
       const data = (body.data ?? body) as Record<string, unknown>;
       const businessFields = extractBusinessFields(data);
+      const photos = extractPhotos(data);
 
       const ctrl = base(this);
       await ctrl.validateInput(data, ctx);
@@ -203,7 +241,11 @@ export default factories.createCoreController(UID, ({ strapi }) => {
             .documents(PROPERTY_UID)
             .update({
               documentId: String(propertyId),
-              data: { space_status: 'Occupied', ...businessPatch(businessFields) },
+              data: {
+                space_status: 'Occupied',
+                ...businessPatch(businessFields),
+                ...(photos !== undefined ? { photos } : {}),
+              },
             });
         } catch {
           // The property may have been removed; leave it as-is.

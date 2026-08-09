@@ -12,6 +12,7 @@ export type MapProperty = {
   productsServices?: string
   operatingDetails?: string
   monthlyRent?: number | string
+  photos?: { id: number; url?: string; name?: string }[] | null
 }
 
 export type MapZone = {

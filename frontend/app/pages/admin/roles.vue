@@ -4,7 +4,7 @@ definePageMeta({
   roles: ['admin']
 })
 
-useHead({ title: 'Roles & permissions | iMapSU' })
+useHead({ title: 'Roles & Permissions | iMapSU' })
 
 type RoleInfo = {
   type: string
@@ -256,7 +256,7 @@ const roleColor = (type: string) => {
     <div class="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
         <p class="imapsu-page-eyebrow mb-2">Administration</p>
-        <h1 class="imapsu-page-heading">Roles &amp; permissions</h1>
+        <h1 class="imapsu-page-heading">Roles &amp; Permissions</h1>
         <p class="mt-2 max-w-xl text-muted">
           Toggle which capabilities each role has. The essentials (sign-in, account update) are always kept on.
         </p>
