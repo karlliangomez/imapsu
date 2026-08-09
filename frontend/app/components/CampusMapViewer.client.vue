@@ -232,12 +232,62 @@ function whitenBuildings(root: THREE.Object3D) {
   }
 }
 
+/**
+ * Paints the full building body by vacancy status: maroon when every space in
+ * the building is occupied, green when at least one space is vacant. Buildings
+ * without a known status stay white. Windows and doors are tinted with a dark
+ * shade of the status color so the whole building reads as colored from every
+ * angle while openings stay visible.
+ */
+function paintBuildingsByStatus() {
+  for (const b of buildingNodes) {
+    const status = props.statusByOrder[String(b.order)]
+    const base = status ? new THREE.Color(STATUS_COLORS[status]) : null
+    b.node.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return
+      const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
+      for (const material of materials) {
+        const meshMaterial = material as THREE.MeshStandardMaterial
+        if (!meshMaterial.color) continue
+        if (!base) {
+          if (!WHITE_BUILDING_EXCLUDE.test(material.name ?? '')) meshMaterial.color.set(BUILDING_WHITE)
+          continue
+        }
+        if (WHITE_BUILDING_EXCLUDE.test(material.name ?? '')) meshMaterial.color.copy(base).multiplyScalar(0.35)
+        else meshMaterial.color.copy(base)
+      }
+    })
+  }
+}
+
 function applyShadows(root: THREE.Object3D) {
   root.traverse((obj) => {
     if (!(obj instanceof THREE.Mesh)) return
     obj.receiveShadow = true
     obj.castShadow = isBuildingNodeName(obj.parent?.name ?? '') || isBuildingNodeName(obj.name ?? '')
   })
+}
+
+/**
+ * Clones every mesh material inside a building so each building owns its
+ * materials. The GLB reuses a handful of material instances across buildings,
+ * so painting one building would otherwise re-tint every other building that
+ * shares the same material (and a status-less building would erase the color
+ * of a statused one during the same pass).
+ */
+function isolateBuildingMaterials() {
+  if (!modelGroup) return
+  for (const child of modelGroup.children) {
+    if (!isBuildingNodeName(child.name)) continue
+    child.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return
+      if (Array.isArray(obj.material)) {
+        obj.material = obj.material.map((m) => m.clone())
+      } else if (obj.material) {
+        obj.material = obj.material.clone()
+      }
+    })
+  }
 }
 
 function collectBuildings() {
@@ -294,6 +344,7 @@ function buildNodeEdges(node: THREE.Object3D, color: string, renderOrder: number
 
 function rebuildEdges() {
   if (!scene) return
+  paintBuildingsByStatus()
   for (const [, group] of statusEdges) {
     scene.remove(group)
     disposeObject(group)
@@ -708,6 +759,7 @@ function loadModel() {
       scene.add(modelGroup)
       whitenBuildings(modelGroup)
       applyShadows(modelGroup)
+      isolateBuildingMaterials()
       if (props.autoBuildings) {
         collectBuildings()
         emit('buildings-ready', buildingNodes.length)
