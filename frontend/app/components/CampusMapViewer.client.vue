@@ -734,7 +734,7 @@ function init() {
 
   renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setSize(width, height)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
   el.appendChild(renderer.domElement)
@@ -761,7 +761,7 @@ function init() {
   const sun = new THREE.DirectionalLight(0xffffff, 2.5)
   sun.position.set(-250, 800, -850)
   sun.castShadow = true
-  sun.shadow.mapSize.set(2048, 2048)
+  sun.shadow.mapSize.set(1024, 1024)
   sun.shadow.camera.left = -600
   sun.shadow.camera.right = 600
   sun.shadow.camera.top = 600

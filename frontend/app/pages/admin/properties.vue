@@ -153,9 +153,6 @@ const form = reactive({
   area: '',
   monthlyRent: '',
   rentalClassification: 'Other',
-  businessName: '',
-  productsServices: '',
-  operatingDetails: '',
   space_status: 'Vacant' as 'Vacant' | 'Occupied'
 })
 
@@ -172,9 +169,6 @@ const resetForm = (property: PropertySpace | null) => {
     area: property?.area != null ? String(property.area) : '',
     monthlyRent: property?.monthlyRent != null ? String(property.monthlyRent) : '',
     rentalClassification: property?.rentalClassification ?? 'Other',
-    businessName: property?.businessName ?? '',
-    productsServices: property?.productsServices ?? '',
-    operatingDetails: property?.operatingDetails ?? '',
     space_status: property?.space_status ?? 'Vacant'
   })
   formError.value = ''
@@ -231,9 +225,6 @@ const save = async () => {
         area: form.area !== '' ? Number(form.area) : undefined,
         monthlyRent: form.monthlyRent !== '' ? Number(form.monthlyRent) : undefined,
         rentalClassification: form.rentalClassification,
-        businessName: form.businessName?.trim() || undefined,
-        productsServices: form.productsServices?.trim() || undefined,
-        operatingDetails: form.operatingDetails?.trim() || undefined,
         photos: photoDrafts.value.map(photo => photo.id),
         space_status: form.space_status
       }
@@ -399,9 +390,6 @@ const remove = async (property: PropertySpace) => {
             <UFormField label="Name" required>
               <UInput v-model="form.name" placeholder="e.g. Stall 101" />
             </UFormField>
-            <UFormField label="Business name" description="If the space is a tenant business (e.g. Brew & Bloom).">
-              <UInput v-model="form.businessName" placeholder="e.g. Brew & Bloom" />
-            </UFormField>
             <UFormField label="Classification">
               <USelect v-model="form.rentalClassification" :items="CLASSIFICATION_OPTIONS" />
             </UFormField>
@@ -441,14 +429,6 @@ const remove = async (property: PropertySpace) => {
                 </div>
               </div>
             </div>
-          </UFormField>
-
-          <UFormField label="Products / services" description="What the tenant sells or offers.">
-            <UTextarea v-model="form.productsServices" :rows="2" />
-          </UFormField>
-
-          <UFormField label="Operating details" description="Hours, contact, special notes.">
-            <UTextarea v-model="form.operatingDetails" :rows="2" />
           </UFormField>
 
           <UFormField label="Description">

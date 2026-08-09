@@ -66,6 +66,12 @@ type SearchResult = {
 const searchQuery = ref('')
 const searchOpen = ref(false)
 
+const closeSearch = () => {
+  setTimeout(() => {
+    searchOpen.value = false
+  }, 150)
+}
+
 const searchResults = computed<SearchResult[]>(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (q.length < 2) return []
@@ -241,7 +247,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
             placeholder="Search building or business…"
             autocomplete="off"
             @focus="searchOpen = true"
-            @blur="setTimeout(() => (searchOpen = false), 150)"
+            @blur="closeSearch"
           />
           <div
             v-if="searchOpen && searchResults.length"

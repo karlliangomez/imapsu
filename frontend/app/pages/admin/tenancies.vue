@@ -13,7 +13,7 @@ type Tenancy = {
   monthlyRent?: number | string
   createdAt?: string
   user?: { id: number; username?: string; email?: string } | null
-  propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string } | null
+  propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string; businessName?: string; productsServices?: string; operatingDetails?: string } | null
 }
 
 type ListResponse<T> = { data: T[] }
@@ -84,7 +84,10 @@ const form = reactive({
   startDate: '',
   endDate: '',
   status: 'Active' as 'Active' | 'Ended' | 'Terminated',
-  monthlyRent: ''
+  monthlyRent: '',
+  businessName: '',
+  productsServices: '',
+  operatingDetails: ''
 })
 
 const openCreate = () => {
@@ -99,7 +102,10 @@ const openCreate = () => {
     startDate: '',
     endDate: '',
     status: 'Active',
-    monthlyRent: ''
+    monthlyRent: '',
+    businessName: '',
+    productsServices: '',
+    operatingDetails: ''
   })
   formError.value = ''
   formOpen.value = true
@@ -117,7 +123,10 @@ const openEdit = (tenancy: Tenancy) => {
     startDate: tenancy.startDate ?? '',
     endDate: tenancy.endDate ?? '',
     status: tenancy.status ?? 'Active',
-    monthlyRent: tenancy.monthlyRent != null ? String(tenancy.monthlyRent) : ''
+    monthlyRent: tenancy.monthlyRent != null ? String(tenancy.monthlyRent) : '',
+    businessName: tenancy.propertySpace?.businessName ?? '',
+    productsServices: tenancy.propertySpace?.productsServices ?? '',
+    operatingDetails: tenancy.propertySpace?.operatingDetails ?? ''
   })
   formError.value = ''
   formOpen.value = true
@@ -175,7 +184,10 @@ const save = async () => {
         startDate: form.startDate,
         endDate: form.endDate || undefined,
         status: form.status,
-        monthlyRent: form.monthlyRent === '' ? undefined : Number(form.monthlyRent)
+        monthlyRent: form.monthlyRent === '' ? undefined : Number(form.monthlyRent),
+        businessName: form.businessName.trim() || undefined,
+        productsServices: form.productsServices.trim() || undefined,
+        operatingDetails: form.operatingDetails.trim() || undefined
       }
     }
     if (editing.value) {
@@ -334,6 +346,20 @@ const openHistory = (tenancy: Tenancy) => {
               <USelect v-model="form.status" :items="[{ label: 'Active', value: 'Active' }, { label: 'Ended', value: 'Ended' }, { label: 'Terminated', value: 'Terminated' }]" />
             </UFormField>
           </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <UFormField label="Business name" description="The tenant business occupying the space (e.g. Brew & Bloom).">
+              <UInput v-model="form.businessName" placeholder="e.g. Brew & Bloom" />
+            </UFormField>
+          </div>
+
+          <UFormField label="Products / services" description="What the tenant sells or offers.">
+            <UTextarea v-model="form.productsServices" :rows="2" />
+          </UFormField>
+
+          <UFormField label="Operating details" description="Hours, contact, special notes.">
+            <UTextarea v-model="form.operatingDetails" :rows="2" />
+          </UFormField>
 
           <UAlert v-if="formError" color="error" icon="i-lucide-circle-alert" :description="formError" />
 
