@@ -89,7 +89,8 @@ const userItems = computed(() => {
       label: auth.displayName.value,
       avatar: {
         src: auth.avatarUrl.value ?? undefined,
-        text: (auth.displayName.value ?? '?').charAt(0).toUpperCase()
+        text: (auth.displayName.value ?? '?').charAt(0).toUpperCase(),
+        size: 'lg'
       }
     },
     {
@@ -152,16 +153,16 @@ const userItems = computed(() => {
         <div v-if="auth.isAuthenticated.value" class="border-t border-maroon-950/60 px-3 py-3">
           <div v-if="!sidebarCollapsed" class="space-y-3">
             <div class="flex items-center gap-3">
-              <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="sm" />
+              <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="lg" />
               <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-white">{{ auth.displayName.value }}</p>
+                <p class="truncate text-base font-semibold text-white">{{ auth.displayName.value }}</p>
                 <p v-if="auth.user.value?.email" class="truncate text-xs text-maroon-200">{{ auth.user.value.email }}</p>
               </div>
             </div>
             <UButton block variant="subtle" color="error" icon="i-lucide-log-out" label="Sign out" @click="auth.logout(); navigateTo('/')" />
           </div>
           <div v-else class="flex flex-col items-center gap-3">
-            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="sm" :title="auth.displayName.value" />
+            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="lg" :title="auth.displayName.value" />
             <UButton square variant="ghost" color="error" icon="i-lucide-log-out" aria-label="Sign out" :title="'Sign out'" class="text-maroon-100 hover:bg-white/10 hover:text-white" @click="auth.logout(); navigateTo('/')" />
           </div>
         </div>
@@ -184,7 +185,13 @@ const userItems = computed(() => {
               <NotificationBell />
               <template v-if="auth.isAuthenticated.value">
                 <UDropdownMenu :items="userItems">
-                  <UButton color="neutral" variant="ghost" :label="auth.user.value?.username" trailing-icon="i-lucide-chevron-down" />
+                  <UButton
+                    color="neutral"
+                    variant="ghost"
+                    :label="auth.user.value?.username"
+                    :avatar="{ src: auth.avatarUrl.value ?? undefined, text: (auth.displayName.value ?? '?').charAt(0).toUpperCase(), size: 'md' }"
+                    trailing-icon="i-lucide-chevron-down"
+                  />
                 </UDropdownMenu>
               </template>
               <template v-else>
@@ -221,9 +228,9 @@ const userItems = computed(() => {
       <template #footer>
         <div v-if="auth.isAuthenticated.value" class="space-y-3">
           <div class="flex items-center gap-3">
-            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="sm" />
+            <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="lg" />
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-white">{{ auth.displayName.value }}</p>
+              <p class="truncate text-base font-semibold text-white">{{ auth.displayName.value }}</p>
               <p v-if="auth.user.value?.email" class="truncate text-xs text-maroon-200">{{ auth.user.value.email }}</p>
             </div>
           </div>

@@ -372,9 +372,18 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
               <p v-if="property.name && property.name !== property.propertyCode" class="mt-0.5 text-xs text-muted">
                 {{ property.name }}
               </p>
-              <p v-if="property.monthlyRent" class="mt-1 text-sm font-semibold">
-                ₱{{ Number(property.monthlyRent).toLocaleString() }}<span class="text-xs font-normal text-muted"> / month</span>
-              </p>
+              <template v-if="property.space_status === 'Occupied'">
+                <p v-if="property.businessName" class="mt-1.5 text-sm font-semibold text-primary">
+                  {{ property.businessName }}
+                </p>
+                <p v-if="property.productsServices" class="mt-1 text-xs leading-relaxed text-toned">
+                  <span class="font-medium text-highlighted">Products / services: </span>{{ property.productsServices }}
+                </p>
+                <p v-if="property.operatingDetails" class="mt-1 text-xs leading-relaxed text-toned">
+                  <span class="font-medium text-highlighted">Operating details: </span>{{ property.operatingDetails }}
+                </p>
+              </template>
+              <p v-else class="mt-1 text-xs text-muted">No business details yet — space is vacant.</p>
             </div>
           </div>
         </template>

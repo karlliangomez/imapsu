@@ -9,6 +9,8 @@ export type MapProperty = {
   floor?: string
   space_status: 'Vacant' | 'Occupied'
   businessName?: string
+  productsServices?: string
+  operatingDetails?: string
   monthlyRent?: number | string
 }
 

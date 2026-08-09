@@ -46,14 +46,25 @@ const emit = defineEmits<{
 
 const container = ref<HTMLDivElement | null>(null)
 
-// Map style matches the reference campus map: pale sage background, white
+// Map style matches the reference campus map: muted sage background, white
 // buildings, amber name pills and amber selection outlines. Vacancy status is
-// carried by a green/maroon building edge plus the label badge.
-const SCENE_BACKGROUND = '#e9edc9'
+// carried by a green/maroon building edge plus the label badge. The backdrop
+// follows the app color mode so the map is never jarringly bright at night.
+const SCENE_BACKGROUND_LIGHT = '#e6ebcf'
+const SCENE_BACKGROUND_DARK = '#202723'
 const BUILDING_WHITE = '#ffffff'
 const HIGHLIGHT_COLOR = '#ffb300'
 const STATUS_COLORS: Record<'Vacant' | 'Occupied', string> = { Vacant: '#22c55e', Occupied: '#b84034' }
 const DEFAULT_COLOR = '#d4af37'
+
+const colorMode = useColorMode()
+const isDark = computed(() =>
+  colorMode.value === 'dark' ? true : colorMode.value === 'light' ? false : window.matchMedia('(prefers-color-scheme: dark)').matches
+)
+const sceneBackground = computed(() => new THREE.Color(isDark.value ? SCENE_BACKGROUND_DARK : SCENE_BACKGROUND_LIGHT))
+watch(sceneBackground, (color) => {
+  if (scene) scene.background = color
+})
 // Frustum height of the top-down orthographic camera, in world units.
 const VIEW_HEIGHT = 800
 // Objects that span more than 40% of the model's XZ extent are treated as
@@ -711,14 +722,19 @@ function loadModel() {
   )
 }
 
-function init() {
+function init(attempt = 0) {
   const el = container.value
-  if (!el) return
+  if (!el) {
+    // ClientOnly can mount this component a tick before the template ref is
+    // bound on some dev-mode loads, so wait briefly before giving up.
+    if (attempt < 20) setTimeout(() => init(attempt + 1), 50)
+    return
+  }
   const width = el.clientWidth || 800
   const height = el.clientHeight || 600
 
   scene = new THREE.Scene()
-  scene.background = new THREE.Color(SCENE_BACKGROUND)
+  scene.background = sceneBackground.value
 
   aspect = width / height
   camera = new THREE.OrthographicCamera(

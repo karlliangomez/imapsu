@@ -237,7 +237,7 @@ const upcomingFeatures = computed(() => {
             :src="auth.avatarUrl.value ?? undefined"
             :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()"
             :alt="auth.displayName.value"
-            size="2xl"
+            size="3xl"
             color="primary"
           />
           <div class="text-center">

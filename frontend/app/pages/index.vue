@@ -40,8 +40,8 @@ const features = [
 
         <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <UButton to="/campus-map" size="lg" label="Navigate the map" icon="i-lucide-navigation" />
-          <UButton v-if="!auth.isAuthenticated.value" to="/register" size="lg" color="secondary" variant="subtle" label="Create an account" />
-          <UButton v-else to="/account" size="lg" color="secondary" variant="subtle" label="My account" />
+          <UButton v-if="!auth.isAuthenticated.value" to="/register" size="lg" color="primary" variant="subtle" label="Create an account" />
+          <UButton v-else to="/account" size="lg" color="primary" variant="subtle" label="My account" />
         </div>
       </div>
     </section>

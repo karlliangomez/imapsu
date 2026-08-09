@@ -335,7 +335,7 @@ const submitFollowUp = async () => {
             </div>
 
             <div v-if="item.status !== 'Completed'" class="mt-4 flex justify-end border-t border-default pt-3">
-              <UButton size="sm" color="secondary" variant="subtle" icon="i-lucide-message-square" label="Follow up" @click="openFollowUp(item)" />
+              <UButton size="sm" color="primary" variant="subtle" icon="i-lucide-message-square" label="Follow up" @click="openFollowUp(item)" />
             </div>
           </UCard>
         </div>

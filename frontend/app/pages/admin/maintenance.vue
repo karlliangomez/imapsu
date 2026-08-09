@@ -457,7 +457,7 @@ const remove = async (ticket: MaintenanceTicket) => {
 
           <div class="mt-4 flex flex-wrap items-center gap-3 border-t border-default pt-4">
             <UBadge :color="statusColor(item.status)" variant="subtle">{{ item.status }}</UBadge>
-            <UButton v-if="item.status !== 'In Progress'" label="Mark in progress" icon="i-lucide-play" color="secondary" variant="subtle" size="sm" @click="setStatus(item, 'In Progress')" />
+            <UButton v-if="item.status !== 'In Progress'" label="Mark in progress" icon="i-lucide-play" color="primary" variant="subtle" size="sm" @click="setStatus(item, 'In Progress')" />
             <UButton v-if="item.status !== 'Completed'" label="Mark completed" icon="i-lucide-check-check" color="success" variant="subtle" size="sm" @click="setStatus(item, 'Completed')" />
             <UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="subtle" size="sm" @click="openEdit(item)" />
             <UButton label="History" icon="i-lucide-history" color="neutral" variant="subtle" size="sm" @click="openHistory(item)" />

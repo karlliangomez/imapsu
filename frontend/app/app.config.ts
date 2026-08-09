@@ -13,7 +13,7 @@ export default defineAppConfig({
         {
           color: 'primary',
           variant: 'solid',
-          class: 'text-maroon-950 bg-gold-400 hover:bg-gold-500 active:bg-gold-500 disabled:bg-gold-400 aria-disabled:bg-gold-400 outline-gold-400/40 focus-visible:outline-3'
+          class: 'text-white bg-maroon-800 hover:bg-maroon-700 active:bg-maroon-900 disabled:bg-maroon-800 aria-disabled:bg-maroon-800 outline-maroon-400/40 focus-visible:outline-3'
         }
       ]
     },
