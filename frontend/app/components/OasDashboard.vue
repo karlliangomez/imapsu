@@ -35,7 +35,10 @@ type Announcement = {
   title: string
   body?: string
   audience?: string
+  pinned?: boolean
   publishedAt?: string
+  publishAt?: string
+  expireAt?: string
   createdAt?: string
 }
 
@@ -71,7 +74,7 @@ const { data: applicationData } = await useFetch<ListResponse<{ status?: string 
 const { data: announcementData } = await useFetch<ListResponse<Announcement>>('/api/announcements', {
   baseURL,
   headers,
-  query: { sort: 'publishedAt:desc', 'pagination[pageSize]': 5 }
+  query: { sort: 'pinned:desc,publishedAt:desc', 'pagination[pageSize]': 5 }
 })
 const { data: ticketData } = await useFetch<ListResponse<{ status?: string }>>('/api/maintenance-tickets', {
   baseURL,

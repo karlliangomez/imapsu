@@ -135,7 +135,7 @@ watch(open, (value) => {
   <UPopover v-if="auth.isAuthenticated.value" v-model:open="open">
     <template #default>
       <div class="relative">
-        <UButton square color="neutral" variant="ghost" icon="i-lucide-bell" :aria-label="unread > 0 ? `Notifications (${unread} unread)` : 'Notifications'" />
+        <UButton class="imapsu-appbar-btn size-9" color="neutral" variant="ghost" icon="i-lucide-bell" :aria-label="unread > 0 ? `Notifications (${unread} unread)` : 'Notifications'" />
         <span v-if="unread > 0" class="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-error px-1 text-[10px] font-semibold text-white">
           {{ unread > 99 ? '99+' : unread }}
         </span>

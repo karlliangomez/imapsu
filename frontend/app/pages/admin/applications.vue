@@ -4,6 +4,8 @@ definePageMeta({
   roles: ['oas']
 })
 
+type MediaDoc = { id: number; url?: string; name?: string }
+
 type RentalApplication = {
   id: number | string
   documentId?: string
@@ -12,7 +14,13 @@ type RentalApplication = {
   evaluation?: string
   recommendation?: string
   createdAt?: string
-  letterOfIntent?: { id: number; url?: string; name?: string } | null
+  letterOfIntent?: MediaDoc | null
+  dtiDocuments?: MediaDoc[] | null
+  birDocuments?: MediaDoc[] | null
+  businessPermits?: MediaDoc[] | null
+  productsServices?: string
+  appearanceDate?: string
+  appearanceConfirmed?: boolean
   user?: { id: number; username?: string; email?: string } | null
   propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string } | null
 }
@@ -28,7 +36,7 @@ type RenewalIntent = {
   tenancy?: { documentId?: string; propertySpace?: { name?: string; propertyCode?: string; building?: string } | null } | null
 }
 
-type ApplicationItem = { kind: 'application'; status: RentalApplication['status']; propertySpace?: RentalApplication['propertySpace']; letterOfIntent?: RentalApplication['letterOfIntent']; evaluation?: RentalApplication['evaluation']; recommendation?: RentalApplication['recommendation'] }
+type ApplicationItem = { kind: 'application'; status: RentalApplication['status']; propertySpace?: RentalApplication['propertySpace']; letterOfIntent?: RentalApplication['letterOfIntent']; dtiDocuments?: RentalApplication['dtiDocuments']; birDocuments?: RentalApplication['birDocuments']; businessPermits?: RentalApplication['businessPermits']; productsServices?: RentalApplication['productsServices']; appearanceDate?: RentalApplication['appearanceDate']; appearanceConfirmed?: RentalApplication['appearanceConfirmed']; evaluation?: RentalApplication['evaluation']; recommendation?: RentalApplication['recommendation'] }
   & Pick<RentalApplication, 'id' | 'documentId' | 'message' | 'createdAt' | 'user'>
 type RenewalItem = { kind: 'renewal'; status: RenewalIntent['status']; letterOfRenewal?: RenewalIntent['letterOfRenewal']; tenancy?: RenewalIntent['tenancy'] }
   & Pick<RenewalIntent, 'id' | 'documentId' | 'message' | 'createdAt' | 'user'>
@@ -50,6 +58,9 @@ const { data, status, error, refresh } = await useFetch<ListResponse<RentalAppli
     'populate[propertySpace]': true,
     'populate[user]': true,
     'populate[letterOfIntent]': true,
+    'populate[dtiDocuments]': true,
+    'populate[birDocuments]': true,
+    'populate[businessPermits]': true,
     sort: 'createdAt:desc',
     'pagination[pageSize]': 100
   }
@@ -160,6 +171,20 @@ const propertyCode = (item: Item) =>
 const letter = (item: Item) =>
   item.kind === 'renewal' ? item.letterOfRenewal : item.letterOfIntent
 
+const applicationDocSections: { key: 'letterOfIntent' | 'dtiDocuments' | 'birDocuments' | 'businessPermits'; label: string }[] = [
+  { key: 'letterOfIntent', label: 'Letter of intent' },
+  { key: 'dtiDocuments', label: 'DTI business documents' },
+  { key: 'birDocuments', label: 'BIR business documents' },
+  { key: 'businessPermits', label: 'Business permits' }
+]
+
+const docsOf = (item: Item, key: 'letterOfIntent' | 'dtiDocuments' | 'birDocuments' | 'businessPermits') => {
+  if (item.kind !== 'application') return []
+  const value = item[key]
+  if (Array.isArray(value)) return value.filter(Boolean)
+  return value ? [value] : []
+}
+
 const formatDate = (value?: string) => {
   if (!value) return ''
   const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(value + 'T00:00:00') : new Date(value)
@@ -205,6 +230,33 @@ const updateStatus = async (item: Item, statusValue: string) => {
   } finally {
     updating.value = null
   }
+}
+
+const confirmingAppearance = ref<string | null>(null)
+
+const confirmAttendance = async (item: Item) => {
+  if (item.kind !== 'application') return
+  const docId = item.documentId ?? item.id
+  confirmingAppearance.value = String(docId)
+  try {
+    await $api(`/api/rental-applications/${docId}`, {
+      method: 'PUT',
+      body: { data: { appearanceConfirmed: true } }
+    })
+    toast.add({ title: 'Attendance confirmed', description: 'The applicant\u2019s office visit is confirmed.', color: 'success', icon: 'i-lucide-check-circle' })
+    await refresh()
+  } catch (err) {
+    toast.add({ title: 'Could not confirm attendance', description: getErrorMessage(err), color: 'error', icon: 'i-lucide-circle-alert' })
+  } finally {
+    confirmingAppearance.value = null
+  }
+}
+
+const formatAppearance = (value?: string) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
 const reviewOpen = ref(false)
@@ -307,12 +359,43 @@ const saveReview = async () => {
           </div>
 
           <div class="mt-4 border-t border-default pt-4">
-            <p class="mb-2 text-xs font-medium text-muted">{{ item.kind === 'renewal' ? 'Letter of renewal intent' : 'Letter of intent' }}</p>
-            <a v-if="letter(item)" :href="`${baseURL}${letter(item)!.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"><UIcon name="i-lucide-file-text" class="size-3.5" />View letter</a>
-            <span v-else class="text-sm text-muted">Not uploaded</span>
+            <template v-if="item.kind === 'renewal'">
+              <p class="mb-2 text-xs font-medium text-muted">Letter of renewal intent</p>
+              <a v-if="letter(item)" :href="`${baseURL}${letter(item)!.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"><UIcon name="i-lucide-file-text" class="size-3.5" />View letter</a>
+              <span v-else class="text-sm text-muted">Not uploaded</span>
+            </template>
+            <template v-else>
+              <p class="mb-2 text-xs font-medium text-muted">Submitted documents</p>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div v-for="section in applicationDocSections" :key="section.key">
+                  <p class="mb-1 text-xs font-medium text-muted">{{ section.label }}</p>
+                  <div v-if="docsOf(item, section.key).length" class="space-y-1">
+                    <a v-for="doc in docsOf(item, section.key)" :key="doc.id" :href="`${baseURL}${doc.url}`" target="_blank" rel="noopener" class="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"><UIcon name="i-lucide-file-text" class="size-3.5" />View {{ doc.name || 'document' }}</a>
+                  </div>
+                  <p v-else class="text-sm text-muted">Not uploaded</p>
+                </div>
+                <div>
+                  <p class="mb-1 text-xs font-medium text-muted">Products / services offered</p>
+                  <p v-if="item.productsServices" class="text-sm leading-relaxed text-toned">{{ item.productsServices }}</p>
+                  <p v-else class="text-sm text-muted">Not provided</p>
+                </div>
+              </div>
+            </template>
           </div>
 
           <p v-if="item.message" class="mt-4 text-sm leading-relaxed text-toned">{{ item.message }}</p>
+
+          <div v-if="item.kind === 'application' && item.status === 'Approved' && item.appearanceDate" class="mt-4 rounded-lg border p-4" :class="item.appearanceConfirmed ? 'border-success/40 bg-success/5' : 'border-warning/40 bg-warning/5'">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-2 text-sm">
+                <UIcon :name="item.appearanceConfirmed ? 'i-lucide-badge-check' : 'i-lucide-calendar-clock'" class="size-4" :class="item.appearanceConfirmed ? 'text-success' : 'text-warning'" />
+                <span class="font-medium text-highlighted">Office visit: {{ formatAppearance(item.appearanceDate) }}</span>
+                <UBadge v-if="item.appearanceConfirmed" color="success" variant="subtle">Confirmed</UBadge>
+                <UBadge v-else color="warning" variant="subtle">Attendance pending</UBadge>
+              </div>
+              <UButton v-if="!item.appearanceConfirmed" label="Confirm attendance" icon="i-lucide-check" size="sm" color="primary" variant="subtle" :loading="confirmingAppearance === String(item.documentId ?? item.id)" @click="confirmAttendance(item)" />
+            </div>
+          </div>
 
           <div v-if="item.kind === 'application' && (item.evaluation || item.recommendation)" class="mt-4 grid gap-3 sm:grid-cols-2">
             <div v-if="item.evaluation" class="rounded-lg bg-primary/5 px-3 py-2">

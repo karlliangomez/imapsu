@@ -504,12 +504,15 @@ export interface ApiAnnouncementAnnouncement
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    expireAt: Schema.Attribute.DateTime;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::announcement.announcement'
     > &
       Schema.Attribute.Private;
+    pinned: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    publishAt: Schema.Attribute.DateTime;
     publishedAt: Schema.Attribute.DateTime;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
@@ -929,6 +932,7 @@ export interface ApiPropertySpacePropertySpace
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'Vacant'>;
     tenancies: Schema.Attribute.Relation<'oneToMany', 'api::tenancy.tenancy'>;
+    tenantPhotos: Schema.Attribute.Media<undefined, true>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -985,9 +989,15 @@ export interface ApiRentalApplicationRentalApplication
     draftAndPublish: false;
   };
   attributes: {
+    appearanceConfirmed: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    appearanceDate: Schema.Attribute.DateTime;
+    birDocuments: Schema.Attribute.Media<undefined, true>;
+    businessPermits: Schema.Attribute.Media<undefined, true>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    dtiDocuments: Schema.Attribute.Media<undefined, true>;
     evaluation: Schema.Attribute.Text;
     letterOfIntent: Schema.Attribute.Media;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -997,6 +1007,7 @@ export interface ApiRentalApplicationRentalApplication
     > &
       Schema.Attribute.Private;
     message: Schema.Attribute.Text;
+    productsServices: Schema.Attribute.Text;
     propertySpace: Schema.Attribute.Relation<
       'manyToOne',
       'api::property-space.property-space'

@@ -42,6 +42,28 @@
       "type": "media",
       "multiple": false
     },
+    "dtiDocuments": {
+      "type": "media",
+      "multiple": true
+    },
+    "birDocuments": {
+      "type": "media",
+      "multiple": true
+    },
+    "businessPermits": {
+      "type": "media",
+      "multiple": true
+    },
+    "productsServices": {
+      "type": "text"
+    },
+    "appearanceDate": {
+      "type": "datetime"
+    },
+    "appearanceConfirmed": {
+      "type": "boolean",
+      "default": false
+    },
     "evaluation": {
       "type": "text"
     },

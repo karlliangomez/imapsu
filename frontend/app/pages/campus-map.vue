@@ -20,7 +20,7 @@ const { baseURL, authHeaders, $api, getErrorMessage } = useStrapi()
 const { data: propertiesData, status } = await useFetch<ListResponse<MapProperty>>('/api/property-spaces', {
   baseURL,
   headers: authHeaders,
-  query: { sort: 'propertyCode:asc', 'pagination[pageSize]': 500, 'populate[photos]': true }
+  query: { sort: 'propertyCode:asc', 'pagination[pageSize]': 500, 'populate[photos]': true, 'populate[tenantPhotos]': true }
 })
 
 const { data: labelsData, refresh: refreshLabels } = await useFetch<ListResponse<MapLabel>>('/api/map-labels', {
@@ -170,6 +170,11 @@ const removeLabel = async () => {
 }
 
 const buildingProperties = computed(() => propertiesInPamsuBuilding(selected.value?.name ?? '', properties.value))
+
+// OAS uploads the listing photos (`photos`, shown while vacant); the tenant
+// uploads their own once the space is occupied (`tenantPhotos`).
+const propertyPhotos = (property: MapProperty) =>
+  property.space_status === 'Occupied' ? property.tenantPhotos ?? [] : property.photos ?? []
 
 const propertyBadgeColor = (property: MapProperty) => (property.space_status === 'Vacant' ? 'success' : 'error')
 
@@ -376,15 +381,17 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
                 <p v-if="property.businessName" class="mt-1.5 text-sm font-semibold text-primary">
                   {{ property.businessName }}
                 </p>
-                <div v-if="property.photos?.length" class="mt-2 flex gap-1.5 overflow-x-auto">
-                  <img
-                    v-for="photo in property.photos"
-                    :key="photo.id"
-                    :src="`${baseURL}${photo.url}`"
-                    :alt="photo.name || property.name"
-                    class="h-16 w-16 shrink-0 rounded-md object-cover"
-                  />
-                </div>
+              </template>
+              <div v-if="propertyPhotos(property).length" class="mt-2 flex gap-1.5 overflow-x-auto">
+                <img
+                  v-for="photo in propertyPhotos(property)"
+                  :key="photo.id"
+                  :src="`${baseURL}${photo.url}`"
+                  :alt="photo.name || property.name"
+                  class="h-16 w-16 shrink-0 rounded-md object-cover"
+                />
+              </div>
+              <template v-if="property.space_status === 'Occupied'">
                 <p v-if="property.productsServices" class="mt-1 text-xs leading-relaxed text-toned">
                   <span class="font-medium text-highlighted">Products / services: </span>{{ property.productsServices }}
                 </p>

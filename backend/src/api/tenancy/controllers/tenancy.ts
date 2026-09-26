@@ -39,7 +39,9 @@ function extractBusinessFields(data: Record<string, unknown>): Record<string, un
 }
 
 // Space photos are uploaded by the tenant themselves and stored on the linked
-// property space, following the same pattern as the business details.
+// property space's `tenantPhotos` field, separate from the OAS-owned `photos`
+// field. The campus map shows `photos` while the space is vacant and
+// `tenantPhotos` once it is occupied.
 const PHOTO_FIELD = 'photos';
 
 function extractPhotos(data: Record<string, unknown>): number[] | undefined {
@@ -180,10 +182,12 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         });
       }
 
-      // Write business details and space photos to the linked property space.
+      // Write business details and tenant space photos to the linked property
+      // space. Tenant photos land on `tenantPhotos` (not `photos`, which the
+      // OAS owns for vacant listings).
       const patch = businessPatch(businessFields);
       if (photos !== undefined) {
-        patch.photos = photos;
+        patch.tenantPhotos = photos;
       }
       if (Object.keys(patch).length > 0) {
         let propertyId = await propertyIdOf(sanitizedData.propertySpace);
@@ -244,7 +248,7 @@ export default factories.createCoreController(UID, ({ strapi }) => {
               data: {
                 space_status: 'Occupied',
                 ...businessPatch(businessFields),
-                ...(photos !== undefined ? { photos } : {}),
+                ...(photos !== undefined ? { tenantPhotos: photos } : {}),
               },
             });
         } catch {

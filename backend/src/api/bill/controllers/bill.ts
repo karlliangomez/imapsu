@@ -15,6 +15,34 @@ import { recordStatusChange } from '../../../utils/status-history';
 
 const UID = 'api::bill.bill';
 
+// Bills are always due on the 10th of the month AFTER the billing period
+// (e.g. a "2026-08" bill is due 2026-09-10). With no (parseable) period the
+// next month relative to today is used.
+function dueDateForPeriod(period: unknown): string {
+  const match = typeof period === 'string' ? period.trim().match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/) : null;
+  let year: number;
+  let month: number;
+  if (match) {
+    year = Number(match[1]);
+    month = Number(match[2]);
+  } else {
+    const now = new Date();
+    year = now.getFullYear();
+    month = now.getMonth() + 1;
+  }
+  if (year < 2000 || year > 2100 || month < 1 || month > 12) {
+    const now = new Date();
+    year = now.getFullYear();
+    month = now.getMonth() + 1;
+  }
+  month += 1;
+  if (month > 12) {
+    month = 1;
+    year += 1;
+  }
+  return `${year}-${String(month).padStart(2, '0')}-10`;
+}
+
 // Returns the "current" meter value of the most recent bill that recorded one,
 // so a newly issued bill can use it as its "previous" value. Falls back to the
 // tenancy's monthly rent-derived amount only when no prior reading exists.
@@ -124,6 +152,7 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       const ctrl = base(this);
       await ctrl.validateInput(data, ctx);
       const sanitizedData = (await ctrl.sanitizeInput(data, ctx)) as Record<string, unknown>;
+      sanitizedData.dueDate = dueDateForPeriod(sanitizedData.period);
 
       const entity = await service().create({ data: sanitizedData });
       const sanitized = await ctrl.sanitizeOutput(entity, ctx);
@@ -185,6 +214,11 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         await ctrl.validateInput(data, ctx);
         const withOr = await withExtractedOrNumber(data);
         const sanitizedData = (await ctrl.sanitizeInput(withOr, ctx)) as Record<string, unknown>;
+
+        // Editing the billing period keeps the due date pinned to the 10th.
+        if (sanitizedData.period != null) {
+          sanitizedData.dueDate = dueDateForPeriod(sanitizedData.period);
+        }
 
         // Verified = OAS confirmed the payment against the uploaded receipt.
         // Sync paidAt accordingly when the verification status changes.

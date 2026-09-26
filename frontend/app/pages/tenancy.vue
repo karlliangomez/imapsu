@@ -13,7 +13,7 @@ type Tenancy = {
   endDate?: string
   status: 'Active' | 'Ended' | 'Terminated'
   createdAt?: string
-  propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string; floor?: string; monthlyRent?: number | string; photos?: UploadedFile[] | null } | null
+  propertySpace?: { documentId?: string; name?: string; propertyCode?: string; building?: string; floor?: string; monthlyRent?: number | string; tenantPhotos?: UploadedFile[] | null } | null
 }
 
 type RenewalIntent = {
@@ -39,7 +39,7 @@ const { data, status, error, refresh } = await useFetch<ListResponse<Tenancy>>('
   baseURL,
   headers,
   query: {
-    'populate[propertySpace][populate][photos]': true,
+    'populate[propertySpace][populate][tenantPhotos]': true,
     sort: 'createdAt:desc',
     'pagination[pageSize]': 10
   }
@@ -149,9 +149,29 @@ const submitRenewal = async () => {
 }
 
 const tenancyKey = (tenancy: Tenancy) => String(tenancy.documentId ?? tenancy.id)
-const photoUploadingFor = ref<Record<string, boolean>>({})
 const photoSavingFor = ref<Record<string, boolean>>({})
 const photoErrorFor = ref<Record<string, string>>({})
+
+// Staged photo edits: selected files are kept as local previews and existing
+// photos are removed from the working list, but nothing is persisted to the
+// server until the tenant hits "Save photos".
+type DraftPhoto = { url: string; serverId?: number; name?: string; file?: File }
+const photoDrafts = ref<Record<string, DraftPhoto[]>>({})
+const photoDirty = ref<Record<string, boolean>>({})
+
+const draftsFor = (tenancy: Tenancy): DraftPhoto[] => {
+  const key = tenancyKey(tenancy)
+  let list = photoDrafts.value[key]
+  if (!list) {
+    list = (tenancy.propertySpace?.tenantPhotos ?? []).map(photo => ({
+      url: `${baseURL}${photo.url}`,
+      serverId: photo.id,
+      name: photo.name
+    }))
+    photoDrafts.value[key] = list
+  }
+  return list
+}
 
 const savePhotos = async (tenancy: Tenancy, ids: number[]) => {
   await $api(`/api/tenancies/${tenancyKey(tenancy)}`, {
@@ -160,48 +180,61 @@ const savePhotos = async (tenancy: Tenancy, ids: number[]) => {
   })
 }
 
-const uploadPhotos = async (tenancy: Tenancy, event: Event) => {
+const onPhotoSelected = (tenancy: Tenancy, event: Event) => {
   const input = event.target as HTMLInputElement
   const files = Array.from(input.files ?? [])
   input.value = ''
   if (!files.length) return
-  const key = tenancyKey(tenancy)
-  photoUploadingFor.value[key] = true
-  photoErrorFor.value[key] = ''
-  try {
-    const formData = new FormData()
-    for (const file of files) formData.append('files', file)
-    const uploaded = await $api<UploadedFile[]>('/api/upload', {
-      method: 'POST',
-      body: formData
-    })
-    const ids = [...(tenancy.propertySpace?.photos ?? []), ...(uploaded ?? [])]
-      .filter(photo => photo?.id != null)
-      .map(photo => photo.id)
-    await savePhotos(tenancy, ids)
-    toast.add({ title: 'Photos updated', description: 'Your space photos were saved and now appear on the campus map.', color: 'success', icon: 'i-lucide-check-circle' })
-    await refresh()
-  } catch (err) {
-    photoErrorFor.value[key] = getErrorMessage(err)
-  } finally {
-    photoUploadingFor.value[key] = false
+  for (const file of files) {
+    draftsFor(tenancy).push({ url: URL.createObjectURL(file), file })
   }
+  photoDirty.value[tenancyKey(tenancy)] = true
+  photoErrorFor.value[tenancyKey(tenancy)] = ''
 }
 
-const removePhoto = async (tenancy: Tenancy, photo: UploadedFile) => {
+const removeDraftPhoto = (tenancy: Tenancy, photo: DraftPhoto) => {
+  const list = draftsFor(tenancy)
+  const index = list.indexOf(photo)
+  if (index >= 0) list.splice(index, 1)
+  photoDirty.value[tenancyKey(tenancy)] = true
+  photoErrorFor.value[tenancyKey(tenancy)] = ''
+}
+
+const submitPhotos = async (tenancy: Tenancy) => {
   const key = tenancyKey(tenancy)
+  const list = draftsFor(tenancy)
   photoSavingFor.value[key] = true
   photoErrorFor.value[key] = ''
   try {
-    const ids = (tenancy.propertySpace?.photos ?? []).filter(item => item.id !== photo.id).map(item => item.id)
+    const pending = list.filter(photo => photo.file)
+    let uploadedIds: number[] = []
+    if (pending.length) {
+      const formData = new FormData()
+      for (const photo of pending) formData.append('files', photo.file as File)
+      const uploaded = await $api<UploadedFile[]>('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      uploadedIds = (uploaded ?? []).filter(photo => photo?.id != null).map(photo => photo.id)
+    }
+    const ids = [...list.filter(photo => photo.serverId != null).map(photo => photo.serverId as number), ...uploadedIds]
     await savePhotos(tenancy, ids)
-    toast.add({ title: 'Photo removed', color: 'success', icon: 'i-lucide-check-circle' })
+    delete photoDrafts.value[key]
+    delete photoDirty.value[key]
+    toast.add({ title: 'Photos saved', description: 'Your space photos were saved and now appear on the campus map.', color: 'success', icon: 'i-lucide-check-circle' })
     await refresh()
   } catch (err) {
     photoErrorFor.value[key] = getErrorMessage(err)
   } finally {
     photoSavingFor.value[key] = false
   }
+}
+
+const discardPhotos = (tenancy: Tenancy) => {
+  const key = tenancyKey(tenancy)
+  delete photoDrafts.value[key]
+  delete photoDirty.value[key]
+  photoErrorFor.value[key] = ''
 }
 </script>
 
@@ -249,31 +282,40 @@ const removePhoto = async (tenancy: Tenancy, photo: UploadedFile) => {
             <p class="text-xs text-muted">Shown on the campus map so students can see your space.</p>
           </div>
           <div class="mt-3 flex flex-wrap items-start gap-3">
-            <div v-if="tenancy.propertySpace?.photos?.length" class="flex flex-wrap gap-2">
-              <div v-for="photo in tenancy.propertySpace.photos" :key="photo.id" class="group relative">
-                <img :src="`${baseURL}${photo.url}`" :alt="photo.name || 'Space photo'" class="h-20 w-20 rounded-lg object-cover" />
-                <button
-                  v-if="tenancy.status === 'Active'"
-                  type="button"
-                  class="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-background text-muted shadow hover:text-error"
-                  :disabled="photoSavingFor[tenancyKey(tenancy)]"
-                  :aria-label="`Remove ${photo.name || 'photo'}`"
-                  @click="removePhoto(tenancy, photo)"
-                >
-                  <UIcon name="i-lucide-x" class="size-3" />
-                </button>
+            <template v-if="draftsFor(tenancy).length">
+              <div class="flex flex-wrap gap-2">
+                <div v-for="photo in draftsFor(tenancy)" :key="photo.serverId ?? photo.url" class="group relative">
+                  <img :src="photo.url" :alt="photo.name || 'Space photo'" class="h-20 w-20 rounded-lg object-cover" />
+                  <button
+                    v-if="tenancy.status === 'Active'"
+                    type="button"
+                    class="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-background text-muted shadow hover:text-error"
+                    :disabled="photoSavingFor[tenancyKey(tenancy)]"
+                    :aria-label="`Remove ${photo.name || 'photo'}`"
+                    @click="removeDraftPhoto(tenancy, photo)"
+                  >
+                    <UIcon name="i-lucide-x" class="size-3" />
+                  </button>
+                </div>
               </div>
-            </div>
+            </template>
             <label
               v-if="tenancy.status === 'Active'"
               class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-default px-3 py-2 text-sm font-medium text-primary hover:border-primary"
-              :class="{ 'pointer-events-none opacity-60': photoUploadingFor[tenancyKey(tenancy)] }"
+              :class="{ 'pointer-events-none opacity-60': photoSavingFor[tenancyKey(tenancy)] }"
             >
-              <UIcon :name="photoUploadingFor[tenancyKey(tenancy)] ? 'i-lucide-loader-2' : 'i-lucide-image-plus'" class="size-4" :class="{ 'animate-spin': photoUploadingFor[tenancyKey(tenancy)] }" />
-              {{ photoUploadingFor[tenancyKey(tenancy)] ? 'Uploading…' : 'Add photos' }}
-              <input type="file" accept="image/*" multiple class="sr-only" :disabled="photoUploadingFor[tenancyKey(tenancy)]" @change="uploadPhotos(tenancy, $event)" />
+              <UIcon name="i-lucide-image-plus" class="size-4" />
+              Add photos
+              <input type="file" accept="image/*" multiple class="sr-only" :disabled="photoSavingFor[tenancyKey(tenancy)]" @change="onPhotoSelected(tenancy, $event)" />
             </label>
-            <p v-if="!tenancy.propertySpace?.photos?.length && tenancy.status !== 'Active'" class="text-sm text-muted">No photos uploaded.</p>
+            <p v-if="!draftsFor(tenancy).length && tenancy.status !== 'Active'" class="text-sm text-muted">No photos uploaded.</p>
+          </div>
+          <div v-if="tenancy.status === 'Active' && photoDirty[tenancyKey(tenancy)]" class="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p class="text-xs text-muted">Changes are staged — they appear on the campus map only after you save.</p>
+            <div class="flex items-center gap-2">
+              <UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-rotate-ccw" label="Discard changes" :disabled="photoSavingFor[tenancyKey(tenancy)]" @click="discardPhotos(tenancy)" />
+              <UButton size="sm" icon="i-lucide-check" :loading="photoSavingFor[tenancyKey(tenancy)]" label="Save photos" @click="submitPhotos(tenancy)" />
+            </div>
           </div>
           <p v-if="photoErrorFor[tenancyKey(tenancy)]" class="mt-2 text-xs text-error">{{ photoErrorFor[tenancyKey(tenancy)] }}</p>
         </div>
@@ -295,7 +337,11 @@ const removePhoto = async (tenancy: Tenancy, photo: UploadedFile) => {
       <template #body>
         <form class="space-y-5" @submit.prevent="submitRenewal">
           <UFormField label="Letter of renewal intent" name="letterOfRenewal" required>
-            <UInput type="file" accept=".pdf,.doc,.docx" :disabled="renewSubmitting" :ui="{ leading: 'none' }" @change="(event: Event) => { const input = event.target as HTMLInputElement; renewLetterFile = input.files?.[0] }" />
+            <label class="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-default px-3 py-2 text-sm font-medium text-primary hover:border-primary" :class="{ 'pointer-events-none opacity-60': renewSubmitting }">
+              <UIcon name="i-lucide-folder-up" class="size-4" />
+              Choose file
+              <input type="file" accept=".pdf,.doc,.docx" class="sr-only" :disabled="renewSubmitting" @change="(event: Event) => { const input = event.target as HTMLInputElement; renewLetterFile = input.files?.[0] }" />
+            </label>
             <p class="mt-1 text-xs text-muted">Attach a signed letter of renewal intent in PDF or Word format.</p>
             <p v-if="renewLetterFile" class="mt-1 flex items-center gap-1.5 text-xs font-medium text-primary"><UIcon name="i-lucide-file-text" class="size-3.5" />{{ renewLetterFile.name }}</p>
           </UFormField>

@@ -100,22 +100,22 @@ const iconClasses = () => ['imapsu-nav-icon size-4.5']
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div :class="collapsed ? 'space-y-4' : 'space-y-5'">
     <div>
-      <p v-if="!collapsed" class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gold-200">General</p>
-      <div class="space-y-0.5">
+      <p v-if="!collapsed" class="imapsu-nav-section-label">General</p>
+      <div class="space-y-1">
         <NuxtLink v-for="link in generalLinks" :key="link.to" :to="link.to" :class="linkClasses(link.to)" :title="collapsed ? link.label : undefined" @click="onNavigate?.()">
-          <UIcon :name="link.icon" :class="iconClasses(link.to)" />
+          <span class="imapsu-nav-icon-wrap"><UIcon :name="link.icon" :class="iconClasses(link.to)" /></span>
           <span v-if="!collapsed">{{ link.label }}</span>
         </NuxtLink>
       </div>
     </div>
 
     <div v-for="section in roleLinks" :key="section.label">
-      <p v-if="!collapsed" class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gold-200">{{ section.label }}</p>
-      <div class="space-y-0.5">
+      <p v-if="!collapsed" class="imapsu-nav-section-label">{{ section.label }}</p>
+      <div class="space-y-1">
         <NuxtLink v-for="link in section.links" :key="link.to" :to="link.to" :class="linkClasses(link.to)" :title="collapsed ? link.label : undefined" @click="onNavigate?.()">
-          <UIcon :name="link.icon" :class="iconClasses(link.to)" />
+          <span class="imapsu-nav-icon-wrap"><UIcon :name="link.icon" :class="iconClasses(link.to)" /></span>
           <span v-if="!collapsed">{{ link.label }}</span>
         </NuxtLink>
       </div>

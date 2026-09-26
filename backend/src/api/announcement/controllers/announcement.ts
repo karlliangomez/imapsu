@@ -4,11 +4,16 @@
  * Announcements are audience-filtered server-side: the `audience` field
  * (Everyone / Students / Tenants) is enforced against the authenticated
  * user's role so student-only and tenant-only announcements never leak to the
- * wrong account type. Anonymous visitors and staff are handled explicitly.
+ * wrong account type. Announcements are also scoped to their live window for
+ * non-staff: scheduled announcements (future `publishAt`) and expired ones
+ * (past `expireAt`) are hidden from students, tenants and anonymous visitors.
+ * Staff (OAS) always see every announcement so scheduled and expired entries
+ * remain manageable.
  */
 
 import { factories } from '@strapi/strapi';
 import type { Core } from '@strapi/strapi';
+import { isStaff } from '../../../utils/access';
 
 const UID = 'api::announcement.announcement';
 
@@ -31,16 +36,28 @@ export default factories.createCoreController(UID, ({ strapi }) => {
     return audiences ?? ['Everyone'];
   };
 
+  const scoped = (query: { filters?: Record<string, unknown> }, user?: { role?: { type?: string } }) => {
+    const filters: Record<string, unknown> = {
+      ...(query.filters ?? {}),
+      audience: { $in: audienceOf(user) },
+    };
+    if (!isStaff(user)) {
+      const now = new Date().toISOString();
+      filters.$and = [
+        { $or: [{ publishAt: { $null: true } }, { publishAt: { $lte: now } }] },
+        { $or: [{ expireAt: { $null: true } }, { expireAt: { $gte: now } }] },
+      ];
+    }
+    return filters;
+  };
+
   return {
     async find(ctx) {
       const ctrl = base(this);
       await ctrl.validateQuery(ctx);
       const query = await ctrl.sanitizeQuery(ctx);
 
-      const filters = {
-        ...(query.filters ?? {}),
-        audience: { $in: audienceOf(ctx.state.user as { role?: { type?: string } } | undefined) },
-      };
+      const filters = scoped(query, ctx.state.user as { role?: { type?: string } } | undefined);
 
       const { results, pagination } = await service().find({ ...query, filters });
 
@@ -53,10 +70,7 @@ export default factories.createCoreController(UID, ({ strapi }) => {
       await ctrl.validateQuery(ctx);
       const query = await ctrl.sanitizeQuery(ctx);
 
-      const filters = {
-        ...(query.filters ?? {}),
-        audience: { $in: audienceOf(ctx.state.user as { role?: { type?: string } } | undefined) },
-      };
+      const filters = scoped(query, ctx.state.user as { role?: { type?: string } } | undefined);
 
       const entity = await service().findOne(ctx.params.id, { ...query, filters });
       if (!entity) {

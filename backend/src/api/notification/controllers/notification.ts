@@ -4,9 +4,10 @@
  * Notifications are written server-side by the shared notification helper
  * (rental applications, maintenance tickets, receipt uploads, ticket
  * follow-ups and announcement publications). The REST surface is read/update
- * only. Staff (OAS) see every notification; regular users only ever see the
- * notifications addressed to them (their `recipient`), e.g. application
- * status updates and new announcements.
+ * only. Staff (OAS) see the operational inbox: events written without a
+ * recipient (applications, tickets, receipts, follow-ups). Regular users only
+ * ever see the notifications addressed to them (their `recipient`), e.g.
+ * application status updates and new announcements.
  */
 
 import { factories } from '@strapi/strapi';
@@ -24,8 +25,12 @@ export default factories.createCoreController(UID, ({ strapi }) => {
     return null;
   };
 
+  // Staff only ever see the recipient-less operational inbox (application /
+  // ticket / receipt / follow-up events). Announcement publications fan out
+  // into one row per audience user (their `recipient`), so scoping staff to
+  // recipient-less rows keeps those per-user copies out of the OAS feed.
   const ownScope = (user: { id: number }) =>
-    isStaff(user) ? {} : { recipient: { id: user.id } };
+    isStaff(user) ? { recipient: { id: { $null: true } } } : { recipient: { id: user.id } };
 
   return {
     async find(ctx) {

@@ -5,7 +5,10 @@ type Announcement = {
   title: string
   body: string
   audience: 'Everyone' | 'Students' | 'Tenants'
+  pinned?: boolean
   publishedAt?: string
+  publishAt?: string
+  expireAt?: string
   createdAt?: string
 }
 
@@ -27,7 +30,7 @@ const { data, status, error, refresh } = await useFetch<AnnouncementResponse>('/
   baseURL,
   headers: authHeaders,
   query: {
-    sort: 'publishedAt:desc',
+    sort: 'pinned:desc,publishedAt:desc',
     'pagination[pageSize]': 50
   }
 })
@@ -119,9 +122,10 @@ const audienceColor = (audience: Announcement['audience']) => {
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <h2 class="text-lg font-semibold text-highlighted">{{ announcement.title }}</h2>
-            <p class="mt-1 text-xs text-muted">{{ formatDate(announcement.publishedAt ?? announcement.createdAt) }}</p>
+            <p class="mt-1 text-xs text-muted">{{ formatDate(announcement.publishedAt ?? announcement.createdAt) }}<span v-if="announcement.expireAt"> · Expires {{ formatDate(announcement.expireAt) }}</span></p>
           </div>
           <div class="flex shrink-0 items-center gap-2">
+            <UBadge v-if="announcement.pinned" color="primary" variant="subtle" icon="i-lucide-pin">Pinned</UBadge>
             <UBadge v-if="auth.isAuthenticated && isAcknowledged(announcement)" color="success" variant="subtle" icon="i-lucide-check-circle-2">Acknowledged</UBadge>
             <UBadge :color="audienceColor(announcement.audience)" variant="subtle">{{ announcement.audience }}</UBadge>
           </div>

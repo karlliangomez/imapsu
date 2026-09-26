@@ -13,6 +13,7 @@ export type MapProperty = {
   operatingDetails?: string
   monthlyRent?: number | string
   photos?: { id: number; url?: string; name?: string }[] | null
+  tenantPhotos?: { id: number; url?: string; name?: string }[] | null
 }
 
 export type MapZone = {

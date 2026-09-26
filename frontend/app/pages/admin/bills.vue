@@ -191,7 +191,6 @@ const form = reactive({
   waterCurrent: '',
   waterRate: '',
   additionalCharges: '',
-  dueDate: '',
   status: 'Unpaid' as Bill['status'],
   verificationNote: ''
 })
@@ -209,7 +208,6 @@ const openCreate = () => {
     waterCurrent: '',
     waterRate: '',
     additionalCharges: '',
-    dueDate: '',
     status: 'Unpaid',
     verificationNote: ''
   })
@@ -232,7 +230,6 @@ const openEdit = (bill: Bill) => {
     waterCurrent: bill.waterMeterCurrent != null ? String(bill.waterMeterCurrent) : '',
     waterRate: bill.waterRate != null ? String(bill.waterRate) : '',
     additionalCharges: bill.additionalCharges != null ? String(bill.additionalCharges) : '',
-    dueDate: bill.dueDate ?? '',
     status: bill.status ?? 'Unpaid',
     verificationNote: bill.verificationNote ?? ''
   })
@@ -327,6 +324,33 @@ const waterCharge = computed(() => waterUsage.value * (Number(form.waterRate) ||
 const additionalChargesNum = computed(() => Number(form.additionalCharges) || 0)
 const totalAmount = computed(() => rentCharge.value + electricCharge.value + waterCharge.value + additionalChargesNum.value)
 
+// Bills are always due on the 10th of the month after the billing period, so
+// the due date is shown as a fixed preview instead of a picker.
+const dueDatePreview = computed(() => {
+  const match = form.period.trim().match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/)
+  let year: number
+  let month: number
+  if (match) {
+    year = Number(match[1])
+    month = Number(match[2])
+  } else {
+    const now = new Date()
+    year = now.getFullYear()
+    month = now.getMonth() + 1
+  }
+  if (month < 1 || month > 12) {
+    const now = new Date()
+    year = now.getFullYear()
+    month = now.getMonth() + 1
+  }
+  month += 1
+  if (month > 12) {
+    month = 1
+    year += 1
+  }
+  return new Date(year, month - 1, 10).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+})
+
 const save = async () => {
   formError.value = ''
   if (!form.tenancy) {
@@ -350,7 +374,6 @@ const save = async () => {
         waterRate: form.waterRate === '' ? undefined : Number(form.waterRate),
         waterCharge: waterCharge.value === 0 ? undefined : Number(waterCharge.value.toFixed(2)),
         additionalCharges: additionalChargesNum.value === 0 ? undefined : Number(additionalChargesNum.value.toFixed(2)),
-        dueDate: form.dueDate || undefined,
         status: form.status,
         verificationNote: form.verificationNote?.trim() || undefined
       }
@@ -679,8 +702,8 @@ const confirmReject = async () => {
           </UFormField>
 
           <div class="grid gap-4 sm:grid-cols-2">
-            <UFormField label="Due date">
-              <UInput v-model="form.dueDate" type="date" />
+            <UFormField label="Due date" description="Bills are always due on the 10th of the month after the billing period.">
+              <UInput :model-value="dueDatePreview" disabled />
             </UFormField>
             <UFormField label="Status" description="Verified sets the verified/paid timestamp; other statuses clear it.">
               <USelect v-model="form.status" :items="[{ label: 'Unpaid', value: 'Unpaid' }, { label: 'For Verification', value: 'For Verification' }, { label: 'Verified', value: 'Verified' }, { label: 'Rejected', value: 'Rejected' }, { label: 'Overdue', value: 'Overdue' }]" />

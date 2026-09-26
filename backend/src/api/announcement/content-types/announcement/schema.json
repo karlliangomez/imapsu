@@ -28,6 +28,16 @@
         "Tenants"
       ]
     },
+    "pinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "publishAt": {
+      "type": "datetime"
+    },
+    "expireAt": {
+      "type": "datetime"
+    },
     "acknowledgments": {
       "type": "relation",
       "relation": "oneToMany",

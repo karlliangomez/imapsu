@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { BUILDING_NAMES } from '~/utils/buildings'
+import { PAMSU_BUILDINGS } from '~/utils/pamsu'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -51,10 +51,16 @@ const { data, status, error, refresh } = await useFetch<ListResponse<PropertySpa
 
 const properties = computed(() => data.value?.data ?? [])
 
+// The Building dropdown lists only the current campus building directory
+// (pamsu-buildings.json, shared with the map). Historic GLB-derived names and
+// stale values stored on older property rows are never offered again. When
+// editing an old row whose building name is no longer in the directory, the
+// stored value is kept so the select can still display it.
 const buildingOptions = computed(() => {
-  const known = new Set(BUILDING_NAMES)
-  const legacy = properties.value.map((p) => p.building).filter((b): b is string => Boolean(b) && !known.has(b))
-  return [...BUILDING_NAMES, ...legacy]
+  const names = PAMSU_BUILDINGS.map((building) => building.name)
+  const current = editing.value?.building
+  if (current && !names.includes(current)) return [...names, current]
+  return names
 })
 
 const CAMPUS_OPTIONS = ['Main Campus']
@@ -140,14 +146,17 @@ const formOpen = ref(false)
 const editing = ref<PropertySpace | null>(null)
 const saving = ref(false)
 const formError = ref('')
-const photoUploading = ref(false)
-const photoDrafts = ref<UploadedFile[]>([])
+// Staged listing photos: selected files are kept as local previews and
+// existing photos can be removed from the working set, but nothing is
+// persisted to the property until the form is saved.
+type DraftPhoto = { url: string; serverId?: number; name?: string; file?: File }
+const photoDrafts = ref<DraftPhoto[]>([])
 
 const form = reactive({
   propertyCode: '',
   name: '',
   building: '',
-  campus: '',
+  campus: 'Main Campus',
   floor: '',
   description: '',
   area: '',
@@ -158,12 +167,16 @@ const form = reactive({
 
 const resetForm = (property: PropertySpace | null) => {
   editing.value = property
-  photoDrafts.value = property?.photos?.filter(photo => photo?.id != null) ?? []
+  photoDrafts.value = (property?.photos ?? []).filter(photo => photo?.id != null).map(photo => ({
+    url: `${baseURL}${photo.url}`,
+    serverId: photo.id,
+    name: photo.name
+  }))
   Object.assign(form, {
     propertyCode: property?.propertyCode ?? '',
     name: property?.name ?? '',
     building: property?.building ?? '',
-    campus: property?.campus ?? '',
+    campus: property?.campus ?? 'Main Campus',
     floor: property?.floor ?? '',
     description: property?.description ?? '',
     area: property?.area != null ? String(property.area) : '',
@@ -184,39 +197,37 @@ const openEdit = (property: PropertySpace) => {
   formOpen.value = true
 }
 
-const onPhotosSelected = async (event: Event) => {
+const onPhotosSelected = (event: Event) => {
   const input = event.target as HTMLInputElement
   const files = Array.from(input.files ?? [])
   input.value = ''
   if (!files.length) return
-  photoUploading.value = true
-  formError.value = ''
-  try {
-    const formData = new FormData()
-    for (const file of files) formData.append('files', file)
-    const uploaded = await $api<UploadedFile[]>('/api/upload', {
-      method: 'POST',
-      body: formData
-    })
-    photoDrafts.value.push(...(uploaded ?? []).filter(photo => photo?.id != null))
-  } catch (err) {
-    formError.value = getErrorMessage(err)
-  } finally {
-    photoUploading.value = false
+  for (const file of files) {
+    photoDrafts.value.push({ url: URL.createObjectURL(file), file })
   }
+  formError.value = ''
 }
 
-const removePhoto = (photo: UploadedFile) => {
-  photoDrafts.value = photoDrafts.value.filter(item => item.id !== photo.id)
+const removePhoto = (photo: DraftPhoto) => {
+  photoDrafts.value = photoDrafts.value.filter(item => item !== photo)
 }
 
 const save = async () => {
   saving.value = true
   formError.value = ''
   try {
+    const pending = photoDrafts.value.filter(photo => photo.file)
+    let uploadedIds: UploadedFile[] = []
+    if (pending.length) {
+      const formData = new FormData()
+      for (const photo of pending) formData.append('files', photo.file as File)
+      uploadedIds = (await $api<UploadedFile[]>('/api/upload', {
+        method: 'POST',
+        body: formData
+      })) ?? []
+    }
     const body = {
       data: {
-        propertyCode: form.propertyCode,
         name: form.name,
         building: form.building,
         campus: form.campus?.trim() || undefined,
@@ -225,7 +236,7 @@ const save = async () => {
         area: form.area !== '' ? Number(form.area) : undefined,
         monthlyRent: form.monthlyRent !== '' ? Number(form.monthlyRent) : undefined,
         rentalClassification: form.rentalClassification,
-        photos: photoDrafts.value.map(photo => photo.id),
+        photos: [...photoDrafts.value.filter(photo => photo.serverId != null).map(photo => photo.serverId as number), ...uploadedIds.filter(photo => photo?.id != null).map(photo => photo.id)],
         space_status: form.space_status
       }
     }
@@ -384,8 +395,8 @@ const remove = async (property: PropertySpace) => {
       <template #body>
         <form class="space-y-4" @submit.prevent="save">
           <div class="grid gap-4 sm:grid-cols-2">
-            <UFormField label="Property code" required>
-              <UInput v-model="form.propertyCode" placeholder="e.g. B1-101" />
+            <UFormField label="Property code" description="Auto-generated from the building, e.g. MO-001.">
+              <UInput v-model="form.propertyCode" placeholder="Auto-generated on save" disabled />
             </UFormField>
             <UFormField label="Name" required>
               <UInput v-model="form.name" placeholder="e.g. Stall 101" />
@@ -413,16 +424,16 @@ const remove = async (property: PropertySpace) => {
             </UFormField>
           </div>
 
-          <UFormField label="Photos" description="Space photos shown on the campus map. Tenants can also manage these from their tenancy page.">
+          <UFormField label="Photos" description="Listing photos shown on the campus map while the space is vacant. Photos apply only when you save the property.">
             <div class="flex flex-wrap items-center gap-3">
-              <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-default px-3 py-2 text-sm font-medium text-primary hover:border-primary" :class="{ 'pointer-events-none opacity-60': photoUploading }">
-                <UIcon :name="photoUploading ? 'i-lucide-loader-2' : 'i-lucide-image-plus'" class="size-4" :class="{ 'animate-spin': photoUploading }" />
-                {{ photoUploading ? 'Uploading…' : 'Upload photos' }}
-                <input type="file" accept="image/*" multiple class="sr-only" :disabled="photoUploading" @change="onPhotosSelected" />
+              <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-default px-3 py-2 text-sm font-medium text-primary hover:border-primary">
+                <UIcon name="i-lucide-image-plus" class="size-4" />
+                Add photos
+                <input type="file" accept="image/*" multiple class="sr-only" @change="onPhotosSelected" />
               </label>
               <div v-if="photoDrafts.length" class="flex flex-wrap gap-2">
-                <div v-for="photo in photoDrafts" :key="photo.id" class="group relative">
-                  <img :src="`${baseURL}${photo.url}`" :alt="photo.name || 'Photo'" class="h-20 w-20 rounded-lg object-cover" />
+                <div v-for="photo in photoDrafts" :key="photo.serverId ?? photo.url" class="group relative">
+                  <img :src="photo.url" :alt="photo.name || 'Photo'" class="h-20 w-20 rounded-lg object-cover" />
                   <button type="button" class="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-background text-muted shadow hover:text-error" @click="removePhoto(photo)">
                     <UIcon name="i-lucide-x" class="size-3" />
                   </button>

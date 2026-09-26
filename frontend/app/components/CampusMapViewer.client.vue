@@ -46,13 +46,18 @@ const emit = defineEmits<{
 
 const container = ref<HTMLDivElement | null>(null)
 
-// Map style matches the reference campus map: muted sage background, white
-// buildings, amber name pills and amber selection outlines. Vacancy status is
-// carried by a green/maroon building edge plus the label badge. The backdrop
-// follows the app color mode so the map is never jarringly bright at night.
-const SCENE_BACKGROUND_LIGHT = '#e6ebcf'
-const SCENE_BACKGROUND_DARK = '#202723'
+// Map style matches the reference campus map: neutral gray campus ground,
+// white buildings, amber name pills and amber selection outlines. Vacancy
+// status is carried by a green/maroon building edge plus the label badge. The
+// backdrop follows the app color mode so the map is never jarringly bright at
+// night.
+const SCENE_BACKGROUND_LIGHT = '#c9c9c6'
+const SCENE_BACKGROUND_DARK = '#232527'
 const BUILDING_WHITE = '#ffffff'
+// Green lawn surfaces on the ground mesh are repainted this neutral gray so
+// the campus ground reads as concrete/asphalt instead of grass.
+const GROUND_GRAY = '#acacac'
+const GROUND_NODE_NAMES = /^(ground|grass|lawn|terrain)$/i
 const HIGHLIGHT_COLOR = '#ffb300'
 const STATUS_COLORS: Record<'Vacant' | 'Occupied', string> = { Vacant: '#22c55e', Occupied: '#b84034' }
 const DEFAULT_COLOR = '#d4af37'
@@ -255,6 +260,33 @@ function paintBuildingsByStatus() {
         }
         if (WHITE_BUILDING_EXCLUDE.test(material.name ?? '')) meshMaterial.color.copy(base).multiplyScalar(0.35)
         else meshMaterial.color.copy(base)
+      }
+    })
+  }
+}
+
+/**
+ * Repaints green lawn surfaces on the ground node into the same neutral gray
+ * as the concrete ground pieces, so the campus ground is uniformly gray. Only
+ * materials whose base color is noticeably green are touched; other ground
+ * surfaces (concrete, asphalt roads) keep their own look. Materials are cloned
+ * before repainting so shared materials on buildings aren't affected.
+ */
+function grayGreenGround(root: THREE.Object3D) {
+  for (const child of root.children) {
+    if (!GROUND_NODE_NAMES.test(child.name)) continue
+    child.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return
+      const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
+      for (let i = 0; i < materials.length; i++) {
+        const meshMaterial = materials[i] as THREE.MeshStandardMaterial
+        if (!meshMaterial.color) continue
+        const { r, g, b } = meshMaterial.color
+        if (!(g > r + 0.03 && g > b + 0.03)) continue
+        const clone = meshMaterial.clone()
+        clone.color.set(GROUND_GRAY)
+        if (Array.isArray(obj.material)) obj.material[i] = clone
+        else obj.material = clone
       }
     })
   }
@@ -758,6 +790,7 @@ function loadModel() {
       modelGroup = gltf.scene
       scene.add(modelGroup)
       whitenBuildings(modelGroup)
+      grayGreenGround(modelGroup)
       applyShadows(modelGroup)
       isolateBuildingMaterials()
       if (props.autoBuildings) {

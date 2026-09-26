@@ -2,6 +2,9 @@ import type { Core } from '@strapi/strapi';
 import { getSettings } from './api/system-settings/services/system-setting';
 import { createBackup, pruneBackups } from './utils/backup';
 import { recordAudit } from './utils/audit-log';
+import { notifyAudience } from './utils/announcement-notifications';
+import { recordNotification } from './utils/notifications';
+import { recordStatusChange } from './utils/status-history';
 const PUBLIC_ROLES = [
   {
     type: 'student',
@@ -471,9 +474,11 @@ export default {
     await ensureRolePermissions(strapi);
     await pruneForbiddenPermissions(strapi);
 
-    await ensureSystemSettings(strapi);
+await ensureSystemSettings(strapi);
     await registerBackupCron(strapi);
     await registerMaintenanceCron(strapi);
+    await registerAnnouncementCron(strapi);
+    await registerAppearanceCron(strapi);
   },
 };
 
@@ -517,6 +522,109 @@ async function registerMaintenanceCron(strapi: Core.Strapi) {
     strapi.log.error('Could not register maintenance cron:', err);
   }
 }
+// Scheduled announcement delivery. Announcements are stored published with a
+// `publishAt` gate; a minute sweep notifies each audience once their publish
+// date arrives. Dedup inside notifyAudience makes re-runs harmless.
+async function registerAnnouncementCron(strapi: Core.Strapi) {
+  try {
+    strapi.cron.add({
+      '* * * * *': async ({ strapi: s }: { strapi: Core.Strapi }) => {
+        try {
+          const now = new Date().toISOString();
+          const due = await s.db.query('api::announcement.announcement').findMany({
+            where: { publishAt: { $lte: now, $notNull: true } },
+            select: ['documentId', 'title', 'audience', 'publishedAt', 'publishAt', 'expireAt'],
+          });
+          for (const announcement of due) {
+            await notifyAudience(s, announcement);
+          }
+        } catch (err) {
+          await recordAudit(s, {
+            action: 'system-error',
+            entityType: 'announcement',
+            description: `Announcement delivery sweep failed: ${(err as Error).message}`,
+          });
+        }
+      },
+    });
+  } catch (err) {
+    strapi.log.error('Could not register announcement cron:', err);
+  }
+}
+
+// Approved applicants are scheduled to report to the OAS office on the Friday
+// of the week their application was approved. A minute sweep automatically
+// declines the application once that day has fully passed without the
+// applicant (or the office) confirming attendance.
+async function registerAppearanceCron(strapi: Core.Strapi) {
+  const UID = 'api::rental-application.rental-application';
+  try {
+    strapi.cron.add({
+      '* * * * *': async ({ strapi: s }: { strapi: Core.Strapi }) => {
+        try {
+          const now = new Date();
+          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+          const overdue = await s.db.query(UID).findMany({
+            where: {
+              status: 'Approved',
+              appearanceDate: { $notNull: true },
+              appearanceConfirmed: { $ne: true },
+            },
+            select: ['id', 'documentId', 'status', 'appearanceDate'],
+            populate: {
+              user: { fields: ['id'] },
+              propertySpace: { fields: ['name'] },
+            },
+          });
+
+          for (const entity of overdue) {
+            const scheduled = entity.appearanceDate ? new Date(entity.appearanceDate as string) : null;
+            if (!scheduled || scheduled.getTime() >= startOfToday.getTime()) {
+              continue;
+            }
+            const documentId = String(entity.documentId ?? entity.id);
+            const propertyName = (entity.propertySpace as { name?: string } | null)?.name ?? null;
+            const applicantId = (entity.user as { id?: number } | null)?.id;
+
+            await s.db.query(UID).update({
+              where: { id: entity.id },
+              data: { status: 'Declined' },
+            });
+            await recordStatusChange(s, {
+              entityType: 'rental-application',
+              entityId: documentId,
+              fromStatus: 'Approved',
+              toStatus: 'Declined',
+              changedBy: null,
+            });
+            if (applicantId != null) {
+              await recordNotification(s, {
+                type: 'application',
+                entityType: 'rental-application',
+                entityId: documentId,
+                entityLabel: propertyName,
+                title: 'Application declined',
+                description: `Your attendance was not confirmed by ${scheduled.toLocaleDateString()}. Your application${propertyName ? ` for ${propertyName}` : ''} was automatically declined.`,
+                recipientId: applicantId,
+              });
+            }
+            strapi.log.info(`Auto-declined rental application ${documentId} (no-show).`);
+          }
+        } catch (err) {
+          await recordAudit(s, {
+            action: 'system-error',
+            entityType: 'rental-application',
+            description: `Application appearance sweep failed: ${(err as Error).message}`,
+          });
+        }
+      },
+    });
+  } catch (err) {
+    strapi.log.error('Could not register appearance cron:', err);
+  }
+}
+
 // Scheduled database backup. The cron expression and retention window are
 // read from the persisted settings; a restart is required after changing the
 // schedule in the admin UI.

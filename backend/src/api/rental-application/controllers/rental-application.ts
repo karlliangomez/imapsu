@@ -15,6 +15,18 @@ import { recordStatusChange } from '../../../utils/status-history';
 
 const UID = 'api::rental-application.rental-application';
 
+// Approved applicants must report to the OAS office on the Friday of the week
+// the approval happens in (today when approved on a Friday). Schedules are
+// stored at local midnight so the auto-decline sweep can expire them cleanly.
+function nextFridayIso(): string {
+  const now = new Date();
+  const day = now.getDay(); // 0 Sun .. 6 Sat
+  const diff = (5 - day + 7) % 7; // days until the next Friday (0 when today)
+  const friday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+  friday.setHours(0, 0, 0, 0);
+  return friday.toISOString();
+}
+
 export default factories.createCoreController(UID, ({ strapi }) => {
   const base = (self: unknown) => self as unknown as Core.CoreAPI.Controller.Base;
   const service = () => strapi.service(UID) as unknown as Core.CoreAPI.Service.CollectionType;
@@ -134,6 +146,17 @@ export default factories.createCoreController(UID, ({ strapi }) => {
               })
             : null;
 
+        // Approving an application schedules the applicant's office visit on
+        // the Friday of that week (refreshed every time it is approved).
+        if (
+          previous &&
+          previous.status !== undefined &&
+          sanitizedData.status === 'Approved' &&
+          previous.status !== 'Approved'
+        ) {
+          sanitizedData.appearanceDate = nextFridayIso();
+        }
+
         const entity = await service().update(ctx.params.id, { data: sanitizedData });
         if (!entity) {
           return ctx.notFound();
@@ -175,8 +198,8 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         return ctrl.transformResponse(sanitized);
       }
 
-      // Regular applicants may only attach a letter of intent to their own
-      // application; every other field is managed by staff.
+      // Regular applicants may only add/update the documents and description on
+      // their own application; every other field is managed by staff.
       const existing = await service().findOne(ctx.params.id, {
         filters: { user: { id: { $eq: user.id } } },
       });
@@ -184,15 +207,34 @@ export default factories.createCoreController(UID, ({ strapi }) => {
         return ctx.notFound();
       }
 
-      if (!('letterOfIntent' in data)) {
-        return ctx.badRequest('Applicants can only update the letter of intent');
+      const APPLICANT_FIELDS = [
+        'letterOfIntent',
+        'dtiDocuments',
+        'birDocuments',
+        'businessPermits',
+        'productsServices',
+        'appearanceConfirmed',
+      ];
+      // Applicants may only mark their office visit as confirmed (a one-way
+      // action); they can never flip it back or change the schedule itself.
+      if (
+        'appearanceConfirmed' in data &&
+        data.appearanceConfirmed !== true
+      ) {
+        return ctx.badRequest('Applicants can only confirm their attendance');
+      }
+      const editableFields = APPLICANT_FIELDS.filter((field) => field in data);
+      if (editableFields.length === 0) {
+        return ctx.badRequest('Applicants can only update their application documents');
+      }
+
+      const picked: Record<string, unknown> = {};
+      for (const field of editableFields) {
+        picked[field] = data[field];
       }
 
       const ctrl = base(this);
-      const sanitizedData = (await ctrl.sanitizeInput(
-        { letterOfIntent: data.letterOfIntent },
-        ctx
-      )) as Record<string, unknown>;
+      const sanitizedData = (await ctrl.sanitizeInput(picked, ctx)) as Record<string, unknown>;
 
       const entity = await service().update(existing.documentId, { data: sanitizedData });
       if (!entity) {

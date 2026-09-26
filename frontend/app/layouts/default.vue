@@ -124,10 +124,12 @@ const userItems = computed(() => {
     <div class="flex items-stretch">
       <aside
         v-if="!isStandalonePage && !isMapPage"
-        class="sticky top-0 z-30 hidden h-screen shrink-0 flex-col overflow-hidden border-r border-maroon-950 bg-gradient-to-b from-maroon-800 to-maroon-900 transition-[width] duration-200 ease-in-out lg:flex"
+        class="sticky top-0 z-30 hidden h-screen shrink-0 flex-col overflow-hidden border-r border-maroon-950/60 bg-gradient-to-b from-maroon-800 to-maroon-950 shadow-[4px_0_20px_-8px_rgba(0,0,0,0.5)] transition-[width] duration-200 ease-in-out lg:flex"
         :class="sidebarCollapsed ? 'w-16' : 'w-64'"
       >
-        <div class="flex items-center justify-between gap-2 border-b border-maroon-950/60 px-3 py-4">
+        <div class="imapsu-brand-bar h-1 shrink-0" />
+
+        <div class="flex items-center justify-between gap-2 px-3 pb-3 pt-4">
           <div class="flex min-w-0 items-center gap-2.5 overflow-hidden">
             <BrandLogo size="size-11" />
             <div v-if="!sidebarCollapsed" class="min-w-0">
@@ -137,7 +139,7 @@ const userItems = computed(() => {
           </div>
           <button
             type="button"
-            class="grid size-8 shrink-0 place-items-center rounded-lg text-maroon-100 transition-colors hover:bg-white/10 hover:text-white"
+            class="grid size-8 shrink-0 place-items-center rounded-lg text-maroon-100 transition-colors hover:bg-white/10 hover:text-gold-300"
             :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
             :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
             @click="toggleSidebar"
@@ -146,20 +148,20 @@ const userItems = computed(() => {
           </button>
         </div>
 
-        <div class="imapsu-scrollbar-maroon flex-1 overflow-y-auto px-3 py-4">
+        <div class="imapsu-scrollbar-maroon flex-1 overflow-y-auto px-2.5 py-3">
           <NavContent :collapsed="sidebarCollapsed" />
         </div>
 
-        <div v-if="auth.isAuthenticated.value" class="border-t border-maroon-950/60 px-3 py-3">
-          <div v-if="!sidebarCollapsed" class="space-y-3">
+        <div v-if="auth.isAuthenticated.value" class="border-t border-white/10 bg-black/20 px-2.5 py-3">
+          <div v-if="!sidebarCollapsed" class="rounded-xl border border-white/10 bg-white/5 p-2.5">
             <div class="flex items-center gap-3">
               <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="2xl" />
               <div class="min-w-0">
-                <p class="truncate text-base font-semibold text-white">{{ auth.displayName.value }}</p>
+                <p class="truncate text-sm font-semibold text-white">{{ auth.displayName.value }}</p>
                 <p v-if="auth.user.value?.email" class="truncate text-xs text-maroon-200">{{ auth.user.value.email }}</p>
               </div>
             </div>
-            <UButton block variant="subtle" color="error" icon="i-lucide-log-out" label="Sign out" @click="auth.logout(); navigateTo('/')" />
+            <UButton block variant="subtle" color="error" icon="i-lucide-log-out" label="Sign out" class="mt-2.5" @click="auth.logout(); navigateTo('/')" />
           </div>
           <div v-else class="flex flex-col items-center gap-3">
             <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="2xl" :title="auth.displayName.value" />
@@ -169,35 +171,39 @@ const userItems = computed(() => {
       </aside>
 
       <div class="min-w-0 flex-1">
-        <header v-if="!isStandalonePage" class="sticky top-0 z-40 border-b border-default bg-default/85 backdrop-blur">
+        <header v-if="!isStandalonePage" class="sticky top-0 z-40">
           <div class="imapsu-brand-bar h-1" />
-          <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-            <div class="flex items-center gap-2">
-              <UButton v-if="!isStandalonePage" :class="isMapPage ? '' : 'lg:hidden'" color="neutral" variant="ghost" square icon="i-lucide-menu" :aria-label="'Open navigation'" @click="drawerOpen = true" />
-              <NuxtLink to="/" class="flex items-center gap-2.5 font-semibold tracking-tight">
-                <BrandLogo size="size-10" />
-                <span class="text-primary dark:text-secondary">iMapSU</span>
-              </NuxtLink>
-            </div>
+          <div class="imapsu-appbar backdrop-blur">
+            <div class="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 sm:px-6">
+              <div class="flex min-w-0 items-center gap-2">
+                <NuxtLink to="/" class="group flex min-w-0 shrink-0 items-center gap-2.5">
+                  <BrandLogo size="size-10" />
+                  <span class="truncate text-base font-bold tracking-tight text-primary dark:text-secondary">iMapSU</span>
+                </NuxtLink>
+              </div>
 
-            <div class="flex items-center gap-2">
-              <UButton color="neutral" variant="ghost" square :icon="isDark ? 'i-lucide-sun' : 'i-lucide-moon'" :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleColorMode" />
-              <NotificationBell />
-              <template v-if="auth.isAuthenticated.value">
-                <UDropdownMenu :items="userItems">
-                  <UButton
-                    color="neutral"
-                    variant="ghost"
-                    :label="auth.user.value?.username"
-                    :avatar="{ src: auth.avatarUrl.value ?? undefined, text: (auth.displayName.value ?? '?').charAt(0).toUpperCase(), size: 'lg' }"
-                    trailing-icon="i-lucide-chevron-down"
-                  />
-                </UDropdownMenu>
-              </template>
-              <template v-else>
-                <UButton to="/login" color="neutral" variant="ghost" label="Sign in" />
-                <UButton to="/register" label="Get started" />
-              </template>
+              <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
+                <UButton class="imapsu-appbar-btn size-9" color="neutral" variant="ghost" square :icon="isDark ? 'i-lucide-sun' : 'i-lucide-moon'" :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleColorMode" />
+                <NotificationBell />
+                <template v-if="auth.isAuthenticated.value">
+                  <UDropdownMenu :items="userItems">
+                    <template #default>
+                      <button
+                        type="button"
+                        class="imapsu-appbar-btn flex h-9 items-center gap-2 rounded-full py-0 pl-1 pr-3"
+                      >
+                        <UAvatar :src="auth.avatarUrl.value ?? undefined" :text="(auth.displayName.value ?? '?').charAt(0).toUpperCase()" :alt="auth.displayName.value" size="sm" />
+                        <span class="max-w-32 truncate text-sm font-medium">{{ auth.user.value?.username }}</span>
+                        <UIcon name="i-lucide-chevron-down" class="size-3.5 text-toned" />
+                      </button>
+                    </template>
+                  </UDropdownMenu>
+                </template>
+                <template v-else>
+                  <UButton to="/login" color="neutral" variant="ghost" label="Sign in" />
+                  <UButton to="/register" label="Get started" />
+                </template>
+              </div>
             </div>
           </div>
         </header>
