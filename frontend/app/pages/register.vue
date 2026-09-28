@@ -12,6 +12,8 @@ const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const role = ref('student')
 const loading = ref(false)
+const registeredEmail = ref('')
+const resending = ref(false)
 
 const roleOptions = [
   { label: 'Student', value: 'student', description: 'View the map and submit feedback about tenants.' },
@@ -39,13 +41,25 @@ const handleRegister = async () => {
   loading.value = true
   try {
     await auth.register({ username: username.value, email: email.value, password: password.value, role: role.value })
-    toast.add({ title: 'Account created', description: `Welcome, ${auth.user.value?.username}!`, color: 'success', icon: 'i-lucide-check-circle' })
-    await navigateTo('/account')
+    registeredEmail.value = email.value
   } catch (error: unknown) {
     const message = (error as { data?: { error?: { message?: string } } })?.data?.error?.message
     toast.add({ title: 'Registration failed', description: message ?? 'Something went wrong. Please try again.', color: 'error', icon: 'i-lucide-circle-alert' })
   } finally {
     loading.value = false
+  }
+}
+
+const resendVerification = async () => {
+  if (!registeredEmail.value) return
+  resending.value = true
+  try {
+    await auth.resendConfirmation(registeredEmail.value)
+    toast.add({ title: 'Verification email sent', description: `A new link was sent to ${registeredEmail.value}.`, color: 'success', icon: 'i-lucide-mail-check' })
+  } catch {
+    toast.add({ title: 'Could not resend', description: 'Please try again in a moment.', color: 'error', icon: 'i-lucide-circle-alert' })
+  } finally {
+    resending.value = false
   }
 }
 </script>
@@ -63,7 +77,27 @@ const handleRegister = async () => {
         </div>
       </template>
 
-      <form class="space-y-5" @submit.prevent="handleRegister">
+      <div v-if="registeredEmail" class="space-y-5 text-center">
+        <span class="mx-auto grid size-14 place-items-center rounded-full bg-success/10 text-success">
+          <UIcon name="i-lucide-mail-check" class="size-7" />
+        </span>
+        <div>
+          <h2 class="text-lg font-semibold text-highlighted">Check your inbox</h2>
+          <p class="mt-2 text-sm text-muted">
+            We sent a verification link to <span class="font-medium text-highlighted">{{ registeredEmail }}</span>. Click it to
+            activate your account — you'll only be able to sign in after verifying your email.
+          </p>
+        </div>
+        <UButton block variant="outline" size="lg" :loading="resending" icon="i-lucide-refresh-cw" @click="resendVerification">
+          Resend verification email
+        </UButton>
+        <NuxtLink to="/login" class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          <UIcon name="i-lucide-log-in" class="size-4" />
+          Go to sign in
+        </NuxtLink>
+      </div>
+
+      <form v-else class="space-y-5" @submit.prevent="handleRegister">
         <UFormField label="Username" name="username" required>
           <UInput v-model="username" type="text" leading-icon="i-lucide-user" placeholder="jdoe" autocomplete="username" size="lg" :disabled="loading" autofocus :ui="{ root: 'w-full' }" />
         </UFormField>

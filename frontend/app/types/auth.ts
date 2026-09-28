@@ -40,6 +40,7 @@ export interface User {
 }
 
 export interface AuthResponse {
-  jwt: string
+  jwt?: string
   user: User
+  verificationEmailSent?: boolean
 }

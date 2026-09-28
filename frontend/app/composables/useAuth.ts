@@ -68,9 +68,29 @@ export const useAuth = () => {
       body: input
     })
 
-    token.value = data.jwt
-    await refreshMe()
+    return data
+  }
+
+  const confirmEmail = async (verificationToken: string) => {
+    const data = await $fetch<AuthResponse>('/api/auth/confirm-email', {
+      method: 'POST',
+      baseURL: config.public.strapiUrl,
+      body: { token: verificationToken }
+    })
+
+    if (data.jwt) {
+      token.value = data.jwt
+      await refreshMe()
+    }
     return data.user
+  }
+
+  const resendConfirmation = async (email: string) => {
+    await $fetch<{ sent: boolean }>('/api/auth/resend-confirmation', {
+      method: 'POST',
+      baseURL: config.public.strapiUrl,
+      body: { email }
+    })
   }
 
   const logout = () => {
@@ -99,6 +119,8 @@ export const useAuth = () => {
     isStaff,
     login,
     register,
+    confirmEmail,
+    resendConfirmation,
     logout,
     init,
     refreshMe

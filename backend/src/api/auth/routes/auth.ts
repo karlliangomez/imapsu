@@ -22,6 +22,22 @@ export default {
     },
     {
       method: 'POST',
+      path: '/auth/confirm-email',
+      handler: 'api::auth.auth.confirmEmail',
+      config: {
+        auth: false,
+      },
+    },
+    {
+      method: 'POST',
+      path: '/auth/resend-confirmation',
+      handler: 'api::auth.auth.resendConfirmation',
+      config: {
+        auth: false,
+      },
+    },
+    {
+      method: 'POST',
       path: '/auth/create-user',
       handler: 'api::auth.auth.createUserByStaff',
       config: {

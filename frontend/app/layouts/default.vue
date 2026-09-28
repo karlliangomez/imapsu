@@ -6,7 +6,7 @@ const { $api, getErrorMessage } = useStrapi()
 const toast = useToast()
 
 const isDark = computed(() => colorMode.value === 'dark')
-const isStandalonePage = computed(() => ['/login', '/register'].includes(route.path))
+const isStandalonePage = computed(() => ['/login', '/register', '/verify-email'].includes(route.path))
 const isMapPage = computed(() => route.path === '/campus-map')
 const drawerOpen = ref(false)
 

@@ -8,6 +8,9 @@ const identifier = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
+const needsVerification = ref(false)
+const verificationEmail = ref('')
+const resending = ref(false)
 
 const handleLogin = async () => {
   loading.value = true
@@ -17,9 +20,28 @@ const handleLogin = async () => {
     await navigateTo('/')
   } catch (error: unknown) {
     const message = (error as { data?: { error?: { message?: string } } })?.data?.error?.message
+    if (message && /verify.+email|confirmed/i.test(message)) {
+      needsVerification.value = true
+      verificationEmail.value = identifier.value.includes('@') ? identifier.value : ''
+      return
+    }
     toast.add({ title: 'Sign in failed', description: message ?? 'Check your credentials and try again.', color: 'error', icon: 'i-lucide-circle-alert' })
   } finally {
     loading.value = false
+  }
+}
+
+const resendVerification = async () => {
+  if (!verificationEmail.value) return
+  resending.value = true
+  try {
+    await auth.resendConfirmation(verificationEmail.value)
+    toast.add({ title: 'Verification email sent', description: `A new link was sent to ${verificationEmail.value}.`, color: 'success', icon: 'i-lucide-mail-check' })
+    needsVerification.value = false
+  } catch {
+    toast.add({ title: 'Could not resend', description: 'Please try again in a moment.', color: 'error', icon: 'i-lucide-circle-alert' })
+  } finally {
+    resending.value = false
   }
 }
 </script>
@@ -38,6 +60,18 @@ const handleLogin = async () => {
             <p class="mt-1 text-sm text-muted">Welcome back — access your campus account.</p>
           </div>
         </template>
+
+        <UAlert v-if="needsVerification" color="warning" icon="i-lucide-mail-warning" variant="soft" title="Email not verified yet" class="mb-5">
+          <template #description>
+            <p class="text-sm">Check your inbox for the verification link, or request a new one below.</p>
+            <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+              <UInput v-model="verificationEmail" type="email" placeholder="you@email.com" size="sm" :disabled="resending" :ui="{ root: 'w-full' }" />
+              <UButton size="sm" :loading="resending" icon="i-lucide-refresh-cw" @click="resendVerification">
+                Resend link
+              </UButton>
+            </div>
+          </template>
+        </UAlert>
 
         <form class="space-y-5" @submit.prevent="handleLogin">
           <UFormField label="Email or username" name="identifier" required>

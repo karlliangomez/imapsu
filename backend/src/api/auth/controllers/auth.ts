@@ -2,9 +2,11 @@
  * auth controller
  */
 
+import { randomBytes } from 'node:crypto';
 import { errors } from '@strapi/utils';
 import { isAdmin, isStaff } from '../../../utils/access';
 import { auditActor, recordAudit } from '../../../utils/audit-log';
+import { sendVerificationEmail } from '../../../utils/email';
 import { getSettings } from '../../system-settings/services/system-setting';
 
 const { ApplicationError, ValidationError } = errors;
@@ -273,6 +275,13 @@ export default {
       };
       await authController.callback(ctx);
     } catch (err) {
+      const errorMessage = (err as { message?: string })?.message ?? '';
+      // The users-permissions plugin rejects unconfirmed sign-ins with its own
+      // wording when email confirmation is enabled; translate it so the app
+      // always shows one consistent message.
+      if (errorMessage.toLowerCase().includes('confirmed')) {
+        return ctx.badRequest('Please verify your email address before signing in. Check your inbox for the verification link.');
+      }
       await recordAudit(strapi, {
         action: 'login-failed',
         entityType: 'auth',
@@ -290,6 +299,13 @@ export default {
         where: { id: rawUser.id },
         populate: { role: true },
       });
+
+      // Self-registered accounts must be email-verified before they can sign
+      // in. This check runs even when the plugin setting is off.
+      if (withRole?.confirmed === false) {
+        return ctx.badRequest('Please verify your email address before signing in. Check your inbox for the verification link.');
+      }
+
       const roleType = withRole?.role?.type ?? withRole?.role?.name ?? null;
       const username = withRole?.username ?? rawUser.username ?? String(rawUser.id);
 
@@ -335,22 +351,89 @@ export default {
       throw new ApplicationError('Email or username is already taken');
     }
 
+    // New accounts start unconfirmed. The owner must prove control of the email
+    // address by clicking the verification link before the account can be used,
+    // which keeps dummy registrations from cluttering the system.
+    const confirmationToken = randomBytes(32).toString('hex');
+
     const user = await userService.add({
       username,
       email,
       password: String(body.password),
       provider: 'local',
-      confirmed: true,
+      confirmed: false,
       role: role.id,
     });
+
+    // Persist the token explicitly so the confirm/resend routes can look it up
+    // regardless of what the users-permissions service copies through.
+    await strapi.db.query(USER_MODEL_UID).update({
+      where: { id: user.id },
+      data: { confirmationToken },
+    });
+
+    await sendVerificationEmail(strapi, { to: email, username, token: confirmationToken });
+
+    ctx.send({
+      user: await sanitizeUser(user),
+      verificationEmailSent: true,
+    });
+  },
+
+  // Public: activates an account once the recipient proves control of the email
+  // address by clicking the link sent at registration. A working JWT is issued
+  // so the click doubles as the sign-in.
+  async confirmEmail(ctx: any) {
+    const token = String(((ctx.request.body ?? {}).token ?? '').trim());
+    if (!token) {
+      throw new ValidationError('Missing verification token');
+    }
+
+    const user = await strapi.db.query(USER_MODEL_UID).findOne({
+      where: { confirmationToken: token },
+    });
+    if (!user) {
+      throw new ValidationError('This verification link is invalid or has already been used.');
+    }
+
+    const userService = strapi.plugin('users-permissions').service('user');
+    await userService.edit(user.id, { confirmed: true, confirmationToken: null });
 
     const jwtService = strapi.plugin('users-permissions').service('jwt');
     const jwt = await jwtService.issue({ id: user.id });
 
     ctx.send({
       jwt,
-      user: await sanitizeUser(user),
+      user: await fetchUserProfile(user.id),
     });
+  },
+
+  // Public: re-sends the verification email for an existing unconfirmed
+  // account. Always reports success so the endpoint cannot be used to probe
+  // which email addresses have accounts.
+  async resendConfirmation(ctx: any) {
+    const email = String(((ctx.request.body ?? {}).email ?? '')).trim().toLowerCase();
+    if (!email.includes('@')) {
+      throw new ValidationError('Please provide your email address');
+    }
+
+    const user = await strapi.db.query(USER_MODEL_UID).findOne({
+      where: { email, confirmed: false },
+    });
+    if (user) {
+      const confirmationToken = randomBytes(32).toString('hex');
+      await strapi.db.query(USER_MODEL_UID).update({
+        where: { id: user.id },
+        data: { confirmationToken },
+      });
+      await sendVerificationEmail(strapi, {
+        to: email,
+        username: user.username ?? undefined,
+        token: confirmationToken,
+      });
+    }
+
+    ctx.send({ sent: true });
   },
 
   // Staff-only: create a tenant-facing account on behalf of a new tenant
