@@ -29,10 +29,10 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
     },
   },
   // Outgoing mail. When SMTP_HOST is set the nodemailer provider is used with
-  // the SMTP_* / EMAIL_FROM environment variables (dev: an Ethereal test
-  // inbox; prod: a real transactional provider). Otherwise it falls back to the
-  // bundled sendmail provider. Delivery failures never break requests — they
-  // are logged and the app fails over gracefully.
+  // the SMTP_* / EMAIL_FROM environment variables (e.g. a Gmail app password
+  // or any transactional provider). Otherwise it falls back to the bundled
+  // sendmail provider. Delivery failures never break requests — they are
+  // logged and the app fails over gracefully.
   email: {
     config: {
       provider: env('SMTP_HOST') ? 'nodemailer' : 'sendmail',
