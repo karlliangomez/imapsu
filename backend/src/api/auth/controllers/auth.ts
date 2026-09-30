@@ -2,11 +2,10 @@
  * auth controller
  */
 
-import { randomBytes } from 'node:crypto';
 import { errors } from '@strapi/utils';
 import { isAdmin, isStaff } from '../../../utils/access';
 import { auditActor, recordAudit } from '../../../utils/audit-log';
-import { sendVerificationEmail } from '../../../utils/email';
+import { generateOtp, otpFromValue, sendVerificationEmail } from '../../../utils/email';
 import { getSettings } from '../../system-settings/services/system-setting';
 
 const { ApplicationError, ValidationError } = errors;
@@ -280,7 +279,7 @@ export default {
       // wording when email confirmation is enabled; translate it so the app
       // always shows one consistent message.
       if (errorMessage.toLowerCase().includes('confirmed')) {
-        return ctx.badRequest('Please verify your email address before signing in. Check your inbox for the verification link.');
+        return ctx.badRequest('Please verify your email address before signing in. Check your inbox for the verification code.');
       }
       await recordAudit(strapi, {
         action: 'login-failed',
@@ -303,7 +302,7 @@ export default {
       // Self-registered accounts must be email-verified before they can sign
       // in. This check runs even when the plugin setting is off.
       if (withRole?.confirmed === false) {
-        return ctx.badRequest('Please verify your email address before signing in. Check your inbox for the verification link.');
+        return ctx.badRequest('Please verify your email address before signing in. Check your inbox for the verification code.');
       }
 
       const roleType = withRole?.role?.type ?? withRole?.role?.name ?? null;
@@ -352,9 +351,9 @@ export default {
     }
 
     // New accounts start unconfirmed. The owner must prove control of the email
-    // address by clicking the verification link before the account can be used,
-    // which keeps dummy registrations from cluttering the system.
-    const confirmationToken = randomBytes(32).toString('hex');
+    // address by entering the 6-digit code emailed to them before the account
+    // can be used, which keeps dummy registrations from cluttering the system.
+    const otp = generateOtp();
 
     const user = await userService.add({
       username,
@@ -365,14 +364,14 @@ export default {
       role: role.id,
     });
 
-    // Persist the token explicitly so the confirm/resend routes can look it up
+    // Persist the code explicitly so the confirm/resend routes can look it up
     // regardless of what the users-permissions service copies through.
     await strapi.db.query(USER_MODEL_UID).update({
       where: { id: user.id },
-      data: { confirmationToken },
+      data: { confirmationToken: otp.value },
     });
 
-    await sendVerificationEmail(strapi, { to: email, username, token: confirmationToken });
+    await sendVerificationEmail(strapi, { to: email, username, code: otp.code });
 
     ctx.send({
       user: await sanitizeUser(user),
@@ -380,20 +379,31 @@ export default {
     });
   },
 
-  // Public: activates an account once the recipient proves control of the email
-  // address by clicking the link sent at registration. A working JWT is issued
-  // so the click doubles as the sign-in.
+  // Public: activates an account once the owner proves control of the email
+  // address by entering the verification code sent at registration. A working
+  // JWT is issued so confirming the code also signs the user in.
   async confirmEmail(ctx: any) {
-    const token = String(((ctx.request.body ?? {}).token ?? '').trim());
-    if (!token) {
-      throw new ValidationError('Missing verification token');
+    const body: Record<string, unknown> = ctx.request.body ?? {};
+    const email = String(body.email ?? '').trim().toLowerCase();
+    const code = String(body.code ?? '').trim();
+
+    if (!email.includes('@')) {
+      throw new ValidationError('Enter the email address you registered with.');
+    }
+    if (!/^\d{6}$/.test(code)) {
+      throw new ValidationError('Enter the 6-digit verification code.');
     }
 
     const user = await strapi.db.query(USER_MODEL_UID).findOne({
-      where: { confirmationToken: token },
+      where: { email, confirmed: false, confirmationToken: { $startsWith: code } },
     });
-    if (!user) {
-      throw new ValidationError('This verification link is invalid or has already been used.');
+
+    const parsed = user?.confirmationToken ? otpFromValue(String(user.confirmationToken)) : null;
+    if (!user || !parsed || parsed.code !== code) {
+      throw new ValidationError('That verification code is incorrect or has already been used.');
+    }
+    if (parsed.expiresAt < Date.now()) {
+      throw new ValidationError('That verification code has expired. Request a new one.');
     }
 
     const userService = strapi.plugin('users-permissions').service('user');
@@ -421,15 +431,15 @@ export default {
       where: { email, confirmed: false },
     });
     if (user) {
-      const confirmationToken = randomBytes(32).toString('hex');
+      const otp = generateOtp();
       await strapi.db.query(USER_MODEL_UID).update({
         where: { id: user.id },
-        data: { confirmationToken },
+        data: { confirmationToken: otp.value },
       });
       await sendVerificationEmail(strapi, {
         to: email,
         username: user.username ?? undefined,
-        token: confirmationToken,
+        code: otp.code,
       });
     }
 

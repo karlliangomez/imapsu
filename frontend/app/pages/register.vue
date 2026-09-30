@@ -84,11 +84,15 @@ const resendVerification = async () => {
         <div>
           <h2 class="text-lg font-semibold text-highlighted">Check your inbox</h2>
           <p class="mt-2 text-sm text-muted">
-            We sent a verification link to <span class="font-medium text-highlighted">{{ registeredEmail }}</span>. Click it to
-            activate your account — you'll only be able to sign in after verifying your email.
+            We emailed a <span class="font-medium text-highlighted">6-digit verification code</span> to
+            <span class="font-medium text-highlighted">{{ registeredEmail }}</span>. Enter it to activate your account — you
+            can only sign in after verifying your email. The code expires in 10 minutes.
           </p>
         </div>
-        <UButton block variant="outline" size="lg" :loading="resending" icon="i-lucide-refresh-cw" @click="resendVerification">
+        <UButton block size="lg" icon="i-lucide-key-round" :to="`/verify-email?email=${encodeURIComponent(registeredEmail)}`">
+          Enter verification code
+        </UButton>
+        <UButton block variant="ghost" size="sm" :loading="resending" icon="i-lucide-refresh-cw" @click="resendVerification">
           Resend verification email
         </UButton>
         <NuxtLink to="/login" class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">

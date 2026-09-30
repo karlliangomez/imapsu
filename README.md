@@ -95,10 +95,11 @@ Open [http://localhost:3000](http://localhost:3000).
 
 1. Go to **Create account** (`/register`) and sign up as Student or Aspiring Tenant.
 2. Check your Gmail inbox (and **Spam** the first time) for the email
-   **"Verify your iMapSU account"** and click the link → your account is activated
+   **"Your iMapSU verification code"**, then click **Enter verification code** on
+   the register screen and type in the 6-digit code → your account is activated
    and you're signed in.
 3. If you try to sign in *before* verifying, it's blocked with a message and a
-   "resend link" option.
+   "resend code" option (codes expire after 10 minutes).
 
 A fresh install starts with no buildings/tenants yet — the account, roles, and map
 infrastructure are there waiting for data.

@@ -63,11 +63,11 @@ const resendVerification = async () => {
 
         <UAlert v-if="needsVerification" color="warning" icon="i-lucide-mail-warning" variant="soft" title="Email not verified yet" class="mb-5">
           <template #description>
-            <p class="text-sm">Check your inbox for the verification link, or request a new one below.</p>
+            <p class="text-sm">Check your inbox for the 6-digit verification code, or request a new one below.</p>
             <div class="mt-3 flex flex-col gap-2 sm:flex-row">
               <UInput v-model="verificationEmail" type="email" placeholder="you@email.com" size="sm" :disabled="resending" :ui="{ root: 'w-full' }" />
               <UButton size="sm" :loading="resending" icon="i-lucide-refresh-cw" @click="resendVerification">
-                Resend link
+                Resend code
               </UButton>
             </div>
           </template>

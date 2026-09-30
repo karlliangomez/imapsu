@@ -2,47 +2,71 @@
  * email helper
  *
  * Email delivery through the Strapi email plugin is best-effort: a failing or
- * missing provider never breaks a request, it is logged instead. The
- * verification link is still surfaced so callers (and the logs) can fall back
- * when no real SMTP provider is configured yet.
+ * missing provider never breaks a request, it is logged instead. Account
+ * verification uses a short-lived 6-digit code (OTP) sent by email, not a
+ * clickable link.
  */
 
+import { randomInt } from 'node:crypto';
 import type { Core } from '@strapi/strapi';
 
 type Strapi = Core.Strapi;
+
+const OTP_TTL_MS = 10 * 60 * 1000;
 
 function frontendUrl(): string {
   return process.env.FRONTEND_URL ?? 'http://localhost:3000';
 }
 
-export function verificationLink(token: string): string {
-  return `${frontendUrl()}/verify-email?token=${encodeURIComponent(token)}`;
+export function otpPageUrl(): string {
+  return `${frontendUrl()}/verify-email`;
+}
+
+/**
+ * Generates a 6-digit code and the opaque value stored on the user row. The
+ * stored value embeds the expiry timestamp (`<code>.<ts>`) so confirmation can
+ * be validated without an extra database column.
+ */
+export function generateOtp(): { code: string; value: string; expiresAt: number } {
+  const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+  const expiresAt = Date.now() + OTP_TTL_MS;
+  return { code, value: `${code}.${expiresAt}`, expiresAt };
+}
+
+export function otpFromValue(value: string): { code: string; expiresAt: number } | null {
+  const idx = value.lastIndexOf('.');
+  if (idx === -1) return null;
+  const code = value.slice(0, idx);
+  const expiresAt = Number(value.slice(idx + 1));
+  if (!/^\d{6}$/.test(code) || !Number.isFinite(expiresAt)) return null;
+  return { code, expiresAt };
 }
 
 export async function sendVerificationEmail(
   strapi: Strapi,
-  input: { to: string; username?: string; token: string }
+  input: { to: string; username?: string; code: string }
 ): Promise<boolean> {
-  const link = verificationLink(input.token);
   const text = [
     `Welcome to iMapSU${input.username ? `, ${input.username}` : ''}!`,
     '',
-    'Verify your email address to activate your account:',
-    link,
+    'Your verification code is:',
+    input.code,
     '',
-    'The link is valid for your account only. If you did not create this account, you can safely ignore this email.',
+    `Enter this code at ${otpPageUrl()} (or in the app) to activate your account. It expires in 10 minutes.`,
+    'If you did not create this account, you can safely ignore this email.',
   ].join('\n');
 
   const html = `
 <p>Welcome to iMapSU${input.username ? `, <strong>${escapeHtml(input.username)}</strong>` : ''}!</p>
-<p>Verify your email address to activate your account:</p>
-<p><a href="${link}">Verify my email &amp; activate my account</a></p>
-<p style="color:#777;font-size:12px">The link is valid for your account only. If you did not create this account, you can safely ignore this email.</p>
+<p>Your verification code is:</p>
+<p style="font-size:24px;letter-spacing:6px;font-weight:700">${input.code}</p>
+<p>Enter this code at <a href="${otpPageUrl()}">${otpPageUrl()}</a> (or in the app) to activate your account. It expires in 10 minutes.</p>
+<p style="color:#777;font-size:12px">If you did not create this account, you can safely ignore this email.</p>
 `.trim();
 
   return trySendEmail(strapi, {
     to: input.to,
-    subject: 'Verify your iMapSU account',
+    subject: 'Your iMapSU verification code',
     text,
     html,
   });

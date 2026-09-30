@@ -71,11 +71,11 @@ export const useAuth = () => {
     return data
   }
 
-  const confirmEmail = async (verificationToken: string) => {
+  const confirmEmail = async (email: string, code: string) => {
     const data = await $fetch<AuthResponse>('/api/auth/confirm-email', {
       method: 'POST',
       baseURL: config.public.strapiUrl,
-      body: { token: verificationToken }
+      body: { email, code }
     })
 
     if (data.jwt) {
