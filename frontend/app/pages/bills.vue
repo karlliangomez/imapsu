@@ -270,7 +270,12 @@ const canSubmitPayment = (bill: Bill) => bill.status !== 'Verified'
           </div>
           <div v-if="bill.receipt">
             <dt class="text-xs text-muted">Receipt</dt>
-            <dd><a :href="`${baseURL}${bill.receipt.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"><UIcon name="i-lucide-file-text" class="size-3.5" />View receipt</a></dd>
+            <dd>
+              <a :href="`${baseURL}${bill.receipt.url}`" target="_blank" rel="noopener" class="group inline-flex items-center gap-2 text-primary">
+                <img :src="`${baseURL}${bill.receipt.url}`" :alt="bill.receipt.name || 'Payment receipt'" class="h-14 w-11 rounded-md border border-default object-cover" />
+                <span class="inline-flex items-center gap-1 font-medium group-hover:underline"><UIcon name="i-lucide-external-link" class="size-3.5" />View</span>
+              </a>
+            </dd>
           </div>
         </dl>
 
@@ -296,8 +301,9 @@ const canSubmitPayment = (bill: Bill) => bill.status !== 'Verified'
 
           <template v-else>
             <div class="flex flex-wrap items-center gap-3">
-              <a :href="`${baseURL}${bill.receipt.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                <UIcon name="i-lucide-file-text" class="size-4" /> {{ bill.receipt.name || 'Receipt attached' }}
+              <a :href="`${baseURL}${bill.receipt.url}`" target="_blank" rel="noopener" class="group inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+                <img :src="`${baseURL}${bill.receipt.url}`" :alt="bill.receipt.name || 'Receipt attached'" class="h-10 w-8 rounded border border-default object-cover" />
+                {{ bill.receipt.name || 'Receipt attached' }}
               </a>
               <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-default px-2.5 py-1.5 text-xs font-medium text-muted hover:border-primary hover:text-primary" :class="{ 'pointer-events-none opacity-60': isUploading(bill) }">
                 <UIcon name="i-lucide-repeat" class="size-3.5" /> Replace

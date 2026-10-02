@@ -14,6 +14,8 @@ type PropertySpace = {
   area?: number | string
   space_status: 'Vacant' | 'Occupied'
   monthlyRent?: number | string
+  photos?: { id: number; url?: string; name?: string }[] | null
+  tenantPhotos?: { id: number; url?: string; name?: string }[] | null
 }
 
 type Feedback = {
@@ -38,7 +40,13 @@ const auth = useAuth()
 const headers = { Authorization: `Bearer ${auth.token.value}` }
 const { data, status, error, refresh } = await useFetch<PropertyResponse>('/api/properties', {
   baseURL: config.public.strapiUrl,
-  headers
+  headers,
+  query: {
+    'populate[photos]': true,
+    'populate[tenantPhotos]': true,
+    sort: 'propertyCode:asc',
+    'pagination[pageSize]': 500
+  }
 })
 
 const { data: tenantData } = await useFetch<ListResponse<ActiveTenant>>('/api/properties/active-tenants', {
@@ -57,7 +65,12 @@ const { data: feedbackData, refresh: refreshFeedback } = await useFetch<ListResp
   }
 })
 
-const properties = computed(() => data.value?.data ?? [])
+const properties = computed(() => {
+  const all = data.value?.data ?? []
+  // The API already filters these for students; this guards against any
+  // cached response while the backend is still restarting.
+  return auth.isStudent.value ? all.filter(property => property.space_status !== 'Vacant') : all
+})
 const vacantCount = computed(() => properties.value.filter(property => property.space_status === 'Vacant').length)
 
 const activeTenantByProperty = computed(() => new Map((tenantData.value?.data ?? []).map(entry => [entry.propertyDocumentId, entry.tenantName])))
@@ -92,6 +105,11 @@ const cards = computed<Card[]>(() => properties.value.map(property => {
     : null
   return { ...property, tenantName, feedback }
 }))
+
+// Occupied spaces show the tenant's own photos; vacant ones show the office's
+// listing photos.
+const photosForCard = (card: Card) =>
+  card.space_status === 'Occupied' ? (card.tenantPhotos ?? []) : (card.photos ?? [])
 
 const refreshAll = async () => {
   await Promise.all([refresh(), refreshFeedback()])
@@ -152,6 +170,16 @@ const formatArea = (area?: number | string) => area == null || area === '' ? 'No
             <UBadge :color="card.space_status === 'Vacant' ? 'secondary' : 'neutral'" variant="subtle">{{ card.space_status }}</UBadge>
           </div>
         </template>
+
+        <div v-if="photosForCard(card).length" class="mb-4 flex gap-2 overflow-x-auto pb-1">
+          <img
+            v-for="photo in photosForCard(card)"
+            :key="photo.id"
+            :src="`${config.public.strapiUrl}${photo.url}`"
+            :alt="photo.name || card.name"
+            class="h-24 w-24 shrink-0 rounded-lg object-cover"
+          />
+        </div>
 
         <dl class="space-y-4 text-sm">
           <div>

@@ -580,7 +580,10 @@ const confirmReject = async () => {
           <div>
             <dt class="text-xs text-muted">Receipt</dt>
             <dd>
-              <a v-if="bill.receipt" :href="`${baseURL}${bill.receipt.url}`" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"><UIcon name="i-lucide-file-text" class="size-3.5" />View</a>
+              <a v-if="bill.receipt" :href="`${baseURL}${bill.receipt.url}`" target="_blank" rel="noopener" class="group inline-flex items-center gap-2 font-medium text-primary">
+                <img :src="`${baseURL}${bill.receipt.url}`" :alt="bill.receipt.name || 'Payment receipt'" class="h-14 w-11 rounded-md border border-default object-cover" />
+                <span class="inline-flex items-center gap-1 group-hover:underline"><UIcon name="i-lucide-external-link" class="size-3.5" />View</span>
+              </a>
               <span v-else class="text-muted">—</span>
             </dd>
           </div>

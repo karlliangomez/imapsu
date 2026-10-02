@@ -29,7 +29,12 @@ const { data: labelsData, refresh: refreshLabels } = await useFetch<ListResponse
   query: { 'pagination[pageSize]': 500 }
 })
 
-const properties = computed(() => propertiesData.value?.data ?? [])
+const properties = computed(() => {
+  const all = propertiesData.value?.data ?? []
+  // Students don't see vacant spaces: the API filters them too, but drop them
+  // here as well so the panel and the building tints never leak vacancy data.
+  return auth.isStudent.value ? all.filter((p) => p.space_status !== 'Vacant') : all
+})
 const statusByOrder = computed(() => buildingStatusByOrder(properties.value))
 const labels = computed<Record<string, string>>(() => {
   const map: Record<string, string> = {}
@@ -332,9 +337,9 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
 
     <div
       v-if="selected"
-      class="absolute bottom-4 left-4 z-10 max-w-sm rounded-xl border border-(--ui-border) bg-(--ui-bg)/90 shadow-lg backdrop-blur"
+      class="absolute bottom-4 left-4 z-10 flex max-h-[min(70dvh,30rem)] max-w-sm flex-col overflow-hidden rounded-xl border border-(--ui-border) bg-(--ui-bg)/90 shadow-lg backdrop-blur"
     >
-      <div class="flex items-start justify-between gap-3 p-4">
+      <div class="flex shrink-0 items-start justify-between gap-3 p-4">
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <span
@@ -357,7 +362,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
         </div>
       </div>
 
-      <div class="px-4 pb-3">
+      <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <template v-if="buildingProperties.length">
           <div class="space-y-2">
             <p class="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -406,15 +411,15 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
         <p v-else class="text-sm text-muted">
           No property spaces listed for this building yet. Once a space is added on the property page, it shows up here.
         </p>
+      </div>
 
-        <div class="mt-3">
-          <UButton
-            :to="auth.isAuthenticated.value ? '/properties' : '/login'"
-            size="sm"
-            icon="i-lucide-building-2"
-            label="View property listing"
-          />
-        </div>
+      <div class="shrink-0 border-t border-(--ui-border)/70 px-4 py-3">
+        <UButton
+          :to="auth.isAuthenticated.value ? '/properties' : '/login'"
+          size="sm"
+          icon="i-lucide-building-2"
+          label="View property listing"
+        />
       </div>
     </div>
 
@@ -425,7 +430,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFulls
         {{ buildingCount }} {{ buildingCount === 1 ? 'building' : 'buildings' }} on the map
       </p>
       <div class="mt-2 space-y-1">
-        <span class="flex items-center gap-1.5">
+        <span v-if="!auth.isStudent.value" class="flex items-center gap-1.5">
           <span class="size-2.5 rounded-full" :style="{ backgroundColor: MAP_STATUS_COLORS.vacant }" />
           Vacant space available
         </span>
